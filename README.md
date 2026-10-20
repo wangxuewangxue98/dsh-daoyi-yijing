@@ -1,0 +1,57 @@
+# 道一-易经推演（dsh-daoyi-yijing）
+
+通用决策辅助 DSH 插件（**决策辅助，非迷信**）。把任意决策事项拆解为可量化检查点，套入
+六层推演框架（384 爻 → 64 卦 → 8 宫 → 四象 → 三才 → 两仪 → 太极），输出结构化结论与
+易经风格研判。结论由用户输入的参数与阈值决定，可追溯、可审计。
+
+> 原名「易经推演-万事决」（dsh-yijing-wanshijue），v0.3.0 起重命名为「道一-易经推演」。
+
+## 双向云模型推演闭环（§2.1）
+- **正向分解 L1→L7**：1 个问题目标 → 逐层调用云模型拆解 → 384 个关键考虑因数。
+- **反向聚合 L7→L1**：384 因数 → 逐层聚合 → 1 个可定/否定结论（可行 / 有条件可行 / 不可行）。
+- 云模型是“翻译器”而非“裁判”：**判定与聚合（L7→L2）为确定性规则，云模型不介入 verdict 决策**。
+
+## 内置剧本
+- `motor-design`：**电机电磁设计·万事决**（从 MotorDesign `Core/yijing_*` Python 原型 1:1 移植）。
+  真实 8 技术领域 × 8 子领域 × 6 检查点 = **384 爻**；其中 158 项为外部数据域（NA，排除出聚合、计入覆盖率），
+  **226 活跃检查点**进聚合。含强关联一票否决、六层加权聚合、天/地/人三才分组。
+- `stock-trend`：**股票趋势研判·万事决**（8 股票分析域 × 64 子域 × 384 爻）：
+  基本面/技术面/资金面/消息面/行业面/宏观面/估值面/风险面，三才分组为
+  天(基本面/行业/宏观)·地(技术/资金/估值)·人(消息/风险)。
+- `demo-384`：规范 384 结构演示剧本（verify 向量）。
+- 自定义剧本：经 `yijing_script_load` 提交 JSON，落盘 `data/scripts/` 持久化（重启回灌）。
+
+## 快速开始
+```
+# 安装到 DSH（web profile；dsh 未进 PATH 时用 npx）
+npx -y @deepseek-ai/dsh plugin --profile web add dsh-daoyi-yijing
+
+# 本地离线自检（零依赖）
+node scripts/verify.mjs          # 离线自检（27 项断言）
+node scripts/runtime-check.mjs   # DSH Runtime 联调预演（纯 run* 函数）
+node scripts/_mock_llm_test.mjs  # 云模型适配器 e2e（mock 服务器，无需密钥）
+node scripts/divine_stock_600711.mjs   # 盛屯矿业(600711) 一个月涨跌推演示例
+```
+安装后对模型说「推演：我要不要接这个 200kW 电机外包项目」即可触发 `yijing_divine`。
+
+## 工具
+- `yijing_divine` 主入口 · `yijing_script_list` 列剧本 · `yijing_script_load` 加载自定义剧本 · `yijing_report` 详报
+
+## 云模型接线（v0.3.4 已接通真实 LLM）
+**未配置时完全离线**：分解返回结构化因数清单、结论走确定性模板（断网也能跑，verdict 不受影响）。
+**配置后由真实 LLM 生成** L1→L7 分解文案与 L1 卦象总评（判定/聚合仍为确定性代码）：
+
+| 方式 | 做法 |
+|------|------|
+| 环境变量（推荐，密钥不落盘） | `DAOYI_LLM_API_KEY=sk-xxx DAOYI_LLM_PROVIDER=deepseek node scripts/divine_with_llm.mjs "决策事项" commercial` |
+| 插件配置 | `cordis.patch.yml` / Config：`cloudModelEnabled: true` + `cloudModelProvider` + `cloudModelApiKey` + `cloudModelName` |
+| 代码注入 | `setCloudModelAdapter(fn)`（测试 / DSH Runtime） |
+
+- 厂商预设：`deepseek`(deepseek-chat) / `qwen`(qwen-max) / `glm`(glm-4-plus) / `moonshot`(moonshot-v1-8k) /
+  `minimax`(abab6.5s-chat) / `openai`(gpt-4o-mini) / `custom`（自填 Base URL，任意 OpenAI 兼容端点）。
+- 环境变量：`DAOYI_LLM_ENABLED` / `DAOYI_LLM_PROVIDER` / `DAOYI_LLM_API_KEY` / `DAOYI_LLM_MODEL` / `DAOYI_LLM_BASE_URL`。
+- 安全：API Key 只从 config/env 读取，**绝不出现在日志与回传中**；`telemetryEnabled` 默认关。
+- 任何失败（401 / 超时 / 断网）自动降级为确定性模板，推演结论依然成立。
+- 详见 `docs/ENGINEERING.md`「云模型接线」节。
+
+> ⚠️ 股票推演结果由公开数据映射的因子评分驱动，属结构化多因子研判示意，**不构成任何投资建议**。

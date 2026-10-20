@@ -1,0 +1,64 @@
+{
+  "name": "dsh-daoyi-yijing",
+  "version": "0.3.4",
+  "type": "module",
+  "main": "./index.mjs",
+  "description": "道一-易经推演 · 通用决策评审插件（决策辅助，非迷信）；六层加权聚合引擎，纯 JS 零求解器依赖",
+  "files": [
+    "index.mjs",
+    "manifest.json",
+    "cordis.patch.yml",
+    "lib/",
+    "tools/",
+    "skills/",
+    "scripts/",
+    "docs/",
+    "examples/",
+    "LICENSE",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "scripts": {
+    "verify": "node scripts/verify.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": {
+        "id": "dsh-daoyi-yijing",
+        "name": "dsh-daoyi-yijing",
+        "entry": "./index.mjs"
+      }
+    },
+    "compatibility": {
+      "dsh": ">=0.1.2 <0.3.0",
+      "node": ">=22.0.0"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.1.2 <0.3.0"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "yijing",
+    "decision",
+    "decision-support",
+    "易经",
+    "决策辅助",
+    "道一",
+    "万事决"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "wangxuewangxue98",
+    "url": "https://github.com/wangxuewangxue98"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wangxuewangxue98/dsh-daoyi-yijing.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wangxuewangxue98/dsh-daoyi-yijing/issues"
+  },
+  "homepage": "https://github.com/wangxuewangxue98/dsh-daoyi-yijing"
+}

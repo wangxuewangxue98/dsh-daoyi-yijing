@@ -1,0 +1,33 @@
+{
+  "manifestVersion": 2,
+  "id": "cn.daoyi.dsh-yijing",
+  "kind": "plugin",
+  "entry": "index.mjs",
+  "name": "dsh-daoyi-yijing",
+  "displayName": "道一-易经推演",
+  "version": "0.3.4",
+  "summary": "通用决策辅助：将决策事项拆解为可量化检查点，套入 384 爻→64 卦→8 宫→四象→三才→两仪→太极 六层推演，输出结构化结论与易经风格解读",
+  "description": "道一-易经推演 · 通用决策评审插件（决策辅助，非迷信）；复用成熟的六层加权聚合引擎（强关联一票否决 + 加权弱关联），内置电机电磁设计 / 股票趋势研判等剧本，支持自定义决策剧本",
+  "permissions": ["fs-read", "fs-write", "network", "env"],
+  "license": "MIT",
+  "author": "Motor-AI",
+  "plugin_id": "dsh-daoyi-yijing",
+  "skill_version": "0.3.4",
+  "channel": "daoyi",
+  "tier": "free",
+  "skills": [
+    {
+      "name": "daoyi-divine",
+      "path": "skills/daoyi-divine/SKILL.md",
+      "version": "0.3.4",
+      "description": "道一-易经推演决策辅助技能"
+    }
+  ],
+  "tools": [
+    "yijing_divine",
+    "yijing_script_list",
+    "yijing_script_load",
+    "yijing_report"
+  ],
+  "created_at": "2026-10-20T00:00:00Z"
+}

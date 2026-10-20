@@ -1,0 +1,26 @@
+# 道一-易经推演（dsh-daoyi-yijing）Cordis 配置补丁
+# 沿用 dsh-motor-ai-l0 形态；去掉 shell 权限（推演引擎无需 shell）。
+- insert:
+    - id: dsh-daoyi-yijing
+      name: 'dsh-daoyi-yijing'
+      config:
+        # ---- 剧本 ----
+        defaultScript: 'motor-design'          # 默认决策剧本（motor-design=电机电磁设计·万事决；可选 stock-trend / demo-384）
+        allowCustomScript: true                # 允许用户 JSON 自定义剧本
+        strongVetoEnabled: true                # 强关联一票否决（默认开，引擎灵魂）
+        reportStyle: 'classic'                 # classic=易经卦象风 / plain=工程报表风
+        # ---- 云模型（L1→L7 分解 / L1 卦象文案；OpenAI 兼容；未启用则离线确定性模板）----
+        cloudModelEnabled: false              # 默认 OFF：开启后分解与卦象文案由真实 LLM 生成
+        cloudModelProvider: 'deepseek'        # deepseek / qwen / glm / moonshot / minimax / openai / custom
+        cloudModelApiKey: ''                  # API Key（Bearer；绝不外发、不入日志；也可用环境变量 DAOYI_LLM_API_KEY）
+        cloudModelName: ''                    # 模型名（留空取厂商默认：deepseek-chat / qwen-max / glm-4-plus / moonshot-v1-8k / abab6.5s-chat）
+        cloudModelBaseUrl: ''                 # 自定义 Base URL（留空取厂商默认；custom 厂商必填）
+        cloudModelTimeoutMs: 30000            # 单次调用超时（毫秒）
+        cloudModelTemperature: 0.3            # 采样温度（低值保稳）
+        cloudModelEndpoint: ''                # 旧版简易协议端点（POST {messages}）；留空则不用
+        # ---- 每日免费额度闸门（与 l0 同口径：本地为准的硬闸，断网也拦）----
+        freeQuotaEnabled: true
+        freeDailyLimit: 10
+        # ---- 合规：脱敏回传默认关 ----
+        telemetryEnabled: false                # 默认关闭，绝不外发决策内容/参数/密钥
+        knowledgeBaseUrl: ''                   # 在线知识库入口（可选）
