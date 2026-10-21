@@ -4,12 +4,14 @@ import { registerYijingDivine, runYijingDivine } from './divine.mjs'
 import { registerYijingScriptList, runYijingScriptList } from './script-list.mjs'
 import { registerYijingScriptLoad, runYijingScriptLoad } from './script-load.mjs'
 import { registerYijingReport, runYijingReport } from './report.mjs'
+import { registerYijingModelList, runYijingModelList } from './model-list.mjs'
 
 export const YIJING_TOOL_NAMES = [
   'yijing_divine',
   'yijing_script_list',
   'yijing_script_load',
   'yijing_report',
+  'yijing_model_list',
 ]
 
 export async function registerYijingTools(ctx, config = {}) {
@@ -17,6 +19,7 @@ export async function registerYijingTools(ctx, config = {}) {
   await registerYijingScriptList(ctx, config)
   await registerYijingScriptLoad(ctx, config)
   await registerYijingReport(ctx, config)
+  await registerYijingModelList(ctx, config)
   return YIJING_TOOL_NAMES
 }
 
@@ -25,5 +28,6 @@ export {
   runYijingScriptList,
   runYijingScriptLoad,
   runYijingReport,
+  runYijingModelList,
 }
 export default { registerYijingTools, YIJING_TOOL_NAMES }

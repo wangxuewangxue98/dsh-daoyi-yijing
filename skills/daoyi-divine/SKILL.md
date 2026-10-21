@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.3.4
+  version: 0.3.5
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -53,14 +53,25 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
 - **真实 LLM 已接通（v0.3.4）**：配置 `cloudModelEnabled=true` + 厂商/密钥（或环境变量
   `DAOYI_LLM_*`）后，L1→L7 分解（结构化 JSON：layers/key_factors/missing_data）与 L1 卦象总评
   由真实云模型生成；支持 deepseek/qwen/glm/moonshot/minimax/openai/custom（OpenAI 兼容）。
+- **自定义模型清单（v0.3.4）**：`cloudModelCustomModels`（或 env `DAOYI_LLM_CUSTOM_MODELS`）传
+  JSON 数组 `[{name,label,baseUrl,model,keyEnv}]`，`name` 即选用 id；`yijing_divine`/`yijing_report`
+  的 `model` 参数可传厂商 id / 自定义模型 name / `session` 按调用热切换。
+- **DSH 会话当前模型（v0.3.4，可选）**：`cloudModelProvider='session'`（或
+  `cloudModelUseSessionModel=true`）时使用 Runtime 注入的 `config.sessionModel`
+  （函数或 `{baseUrl,model,apiKey}`）或 env `DAOYI_LLM_SESSION_*`；未注入则离线模板。
+- **免费额度闸门按 LLM 调用计数（v0.3.4）**：每次真实 LLM 外发计 1 次（一次推演 = 2 次），
+  默认 20 次/天（`freeLlmDailyLimit`），本地硬闸断网也拦；用尽后自动降级确定性模板
+  （verdict 不受影响），次日重置；`yijing_model_list` 可查额度快照（只读）。
 - **离线/断网降级**：未配置或调用失败（401/超时/断网）时，L1→L7 返回结构化因数清单（剧本骨架），
   L1 文案走确定性模板（易经卦象头 + 八宫明细），推演结论依然成立、verdict 不受影响。
 
 ## 工具用法
-- `yijing_divine(matter, script?, inputs?, detail?)`：主入口。给出可行/有条件可行/不可行结论。
+- `yijing_divine(matter, script?, inputs?, detail?, model?)`：主入口。给出可行/有条件可行/不可行结论；
+  `model` 可按调用覆盖模型（厂商 id / 自定义模型 name / session）。
 - `yijing_script_list()`：列出内置与自定义剧本。
 - `yijing_script_load(script_json)`：加载自定义剧本（JSON）。
-- `yijing_report(matter, script?, inputs?)`：生成详细报告并回灌 `yijing_gray_logs/`。
+- `yijing_report(matter, script?, inputs?, model?)`：生成详细报告并回灌 `yijing_gray_logs/`。
+- `yijing_model_list()`：列出可选模型（6 厂商预设 + 自定义清单 + session）、当前选择与今日 LLM 额度快照。
 
 ## 内置剧本
 - `motor-design`：电机电磁设计·万事决（真实 384 检查点，226 活跃 / 158 NA）。

@@ -1,8 +1,13 @@
 {
   "name": "dsh-daoyi-yijing",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "type": "module",
   "main": "./index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
   "description": "道一-易经推演 · 通用决策评审插件（决策辅助，非迷信）；六层加权聚合引擎，纯 JS 零求解器依赖",
   "files": [
     "index.mjs",
@@ -23,11 +28,7 @@
   },
   "dsh": {
     "bundle": {
-      "patch": {
-        "id": "dsh-daoyi-yijing",
-        "name": "dsh-daoyi-yijing",
-        "entry": "./index.mjs"
-      }
+      "patch": "./cordis.patch.yml"
     },
     "compatibility": {
       "dsh": ">=0.1.2 <0.3.0",

@@ -1,6 +1,57 @@
 # CHANGELOG
 
+## 0.3.5 (2026-10-21)
+### P0 修复：`dsh.bundle.patch` 字段形态导致安装失败
+- **现象**：`dsh plugin add dsh-daoyi-yijing` 安装失败，报
+  `dsh.bundle.patch must be a file path or a list of file paths`。
+- **根因**：`package.json` 的 `dsh.bundle.patch` 被写成嵌套对象
+  （`{id,name,entry}`）——0.3.3 审计时改错了方向；DSH 安装器只接受
+  **文件路径或路径列表**（参照安装正常的 `dsh-motor-ai-l0@0.6.5`：
+  `"patch": "./cordis.patch.yml"`）。0.3.3 / 0.3.4 均带此缺陷发布
+  （0.3.3 曾观察到安装异常，当时未定位到该字段）。
+- **修复**：`dsh.bundle.patch` 改回 `"./cordis.patch.yml"`，并补 `exports`
+  （`"."` / `"./cordis.patch.yml"` / `"./package.json"`，对齐 l0 发布形态）。
+  发布前新增本地断言：`bundle.patch` 必须是 string 或 string[]，且指向的
+  文件真实存在于 files 清单内（见 `scripts/_smoke_release.mjs`）。
+- 版本对齐：manifest `version` / `skill_version` / skills[0].version、
+  package.json version、SKILL.md front-matter 全部升至 0.3.5。
+- 其余特性（0.3.4 的真实 LLM 接通、自定义模型清单、DSH 会话模型、
+  LLM 调用计数闸门）不变，测试全量不回归。
+
 ## 0.3.4 (2026-10-20)
+### ② 自定义模型清单 + DSH 会话当前模型 + LLM 调用计数计费闸门（同日补齐，随 0.3.4 一并发布）
+- **自定义模型清单**（`lib/yijing/cloud-model.mjs`）：新增 `cloudModelCustomModels`（JSON 数组字符串）
+  与 env `DAOYI_LLM_CUSTOM_MODELS`，每项 `{name,label,baseUrl,model,keyEnv}`；`name` 即选用 id，
+  `parseCustomModels` / `listCloudModels` 纯函数解析；`resolveCloudSettings` 的 provider 查找扩展到
+  「预设 ∪ 自定义清单 ∪ session」。`yijing_divine` / `yijing_report` 新增 **`model` 参数**，
+  可按调用热切换模型（厂商 id / 自定义模型 name / `session`），经 `buildEffectiveConfig` 合并生效。
+- **DSH 会话当前模型（可选）**：新增 provider `session` 与开关 `cloudModelUseSessionModel`；
+  来源按序为 `config.sessionModel`（函数直调 / `{baseUrl,model,apiKey}`，Runtime 可经 `apply(ctx,config)`
+  的 `ctx.sessionModel` 注入）→ env `DAOYI_LLM_SESSION_BASE_URL/MODEL/API_KEY`；未注入即未启用
+  （离线模板，不报错）。`callCloudModel` 适配器优先级重排为「per-call config 显式设置 > config.cloudModel
+  函数 > 模块级适配器 > 旧版 endpoint」，使 per-call 覆盖真正生效。
+- **LLM 调用计数计费闸门**（新增 `lib/yijing/quota.mjs`）：口径由「每日推演次数」改为
+  **「每次真实 LLM 外发计 1 次」**（一次推演 = decompose + conclude = 2 次；离线推演不计数）；
+  本地硬闸 fail-closed（`$DSH_HOME/storages/dsh-daoyi-yijing/llm-quota.json`，env
+  `DAOYI_LLM_QUOTA_FILE` 可覆盖），默认 **20 次/天**（`freeLlmDailyLimit`；env
+  `DAOYI_LLM_FREE_DAILY_LIMIT`；`freeDailyLimit` 保留为兼容别名）；用尽抛
+  `LlmQuotaExceededError` → `callCloudModel` 返回 null 并记录闸门事件 → 推演自动降级
+  确定性模板（verdict 不受影响），`evaluate` 结果新增 `llm` 画像（active/provider/model/
+  quota/quota_blocked/notice），`yijing_report` 新增【云模型】【额度提示】行。
+  `freeQuotaEnabled: false` 为运维旁路（不拦不计数）。与 l0 `lib/quota.mjs` 同口径：本地为准、
+  无后端、无遥测；失败调用也计数（计费诚实）。
+- **新增工具 `yijing_model_list`**（第 5 个工具）：列全部可选模型（6 预设 + 自定义清单 + session）、
+  当前生效模型与今日 LLM 额度快照（只读，不消耗额度）；`manifest.json` tools 同步。
+- 文档同步：`cordis.patch.yml` 新增 4 个配置键；`README` 新增「自定义模型」「免费额度闸门」节；
+  `ENGINEERING.md` 配置全表 + 云模型接线优先级 + 新增「免费额度闸门」节；`SKILL.md` 工具用法补充。
+- **P0 修复（真实编译器探针实证）**：`tools/yijing/divine.mjs` 的 `execute` 漏 `await` async
+  `runYijingDivine`，`JSON.stringify(Promise)` 恒返回 `"{}"`——主入口工具在真实 DSH Runtime 下
+  输出为空（与 0.3.3 修复的 report.mjs 同类事故，本次补上）；修复后经真实
+  `@deepseek-ai/dsh-tools` defineTool 注册 + execute 端到端直调验证（42/42 PASS）。
+- **新增 `scripts/_probe_definetool.mjs`**：用真实 `defineTool` 编译器注册全部 5 个工具
+  （schema 合规：`matter` required=true、`script` oneOf、`model` type=string）+ execute 端到端，
+  把此类事故纳入可回归检查（脚本头注附依赖树准备步骤）。
+
 ### 接通真实云模型 LLM（L1→L7 分解 + L1 卦象文案）
 - 重写 `lib/yijing/cloud-model.mjs`：新增 **OpenAI 兼容真实调用适配器**（`/chat/completions`，
   Bearer 鉴权、AbortController 超时、`choices[0].message.content` 解析），内置 6 厂商预设
@@ -21,8 +72,12 @@
 - 新增示例 `scripts/divine_with_llm.mjs`（env 驱动，无密钥自动降级）。
 - **架构纪律不变**：判定与聚合（L7→L2）仍为确定性代码，云模型只做翻译器；任何 LLM 失败
   （401/超时/断网）均降级为确定性模板，verdict 不受影响。
-- **未做（如实披露）**：免费额度闸门尚未按 LLM 调用计数（`freeQuotaEnabled` 配置项保留未接驳）；
-  沙箱无真实密钥，真实凭证的完整 e2e 调用未跑（错误路径已实证）。
+- **未做（如实披露）**：沙箱无真实密钥，真实凭证的完整 e2e 调用未跑（错误路径已实证；
+  当日补齐的自定义模型/session/计费闸门均有离线自检覆盖，见下）。
+- **当日补齐自检**：`scripts/_selftest_llm_quota.mjs`（LLM 调用计数闸门 + 自定义模型解析 +
+  session 解析 + per-call 模型覆盖，隔离配额文件）**51/51 PASS**；`_mock_llm_test.mjs` 增 quota
+  隔离与计数断言 **20/20 PASS**；`_probe_definetool.mjs` 真实 defineTool 编译 + execute 端到端
+  **42/42 PASS**；`verify.mjs` 27/27 不回归；`runtime-check` PASS；`node --check` 全量 OK。
 
 ## 0.3.3 (2026-10-20)
 ### 发布工程加固（对齐 DSH 插件发布契约）

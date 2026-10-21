@@ -1,6 +1,10 @@
 // _mock_llm_test.mjs — 云模型适配器端到端测试（本地 mock OpenAI 服务器，无需真实密钥）
 // 覆盖：① 请求形状/鉴权头/模型名/温度 ② 响应解析 ③ 401 错误降级 ④ 超时降级 ⑤ 环境变量解析
+//       ⑥ 计费闸门按 LLM 调用计数（401/超时同样计；离线 ⑤ 不计数）——v0.3.4 新增
 import { createServer } from 'node:http'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { rmSync } from 'node:fs'
 import {
   setCloudModelAdapter,
   resolveCloudSettings,
@@ -9,8 +13,14 @@ import {
   decomposeWithCloudModel,
   concludeWithCloudModel,
 } from '../lib/yijing/cloud-model.mjs'
+import { checkLlmQuota } from '../lib/yijing/quota.mjs'
 import { buildCommercialScript } from '../lib/yijing/checkpoints.mjs'
 import { evaluate } from '../lib/yijing/reviewer.mjs'
+
+// ── 计费闸门隔离：配额文件走临时目录，不污染真实 ~/.dsh（v0.3.4）──
+const QUOTA_FILE = join(tmpdir(), `daoyi-mock-quota-${process.pid}.json`)
+process.env.DAOYI_LLM_QUOTA_FILE = QUOTA_FILE
+rmSync(QUOTA_FILE, { force: true })
 
 let pass = 0
 let fail = 0
@@ -119,6 +129,9 @@ mode = '401'
     '③ LLM 失败 → evaluate 回退确定性模板文案',
   )
   assert(r.verdict === '可行' || r.verdict === '不可行', `③ verdict 仍由确定性引擎给出（${r.verdict}）`)
+  // ⑥ 计费闸门：401 也计数。①callCloudModel 1 + ②decompose 1 + ②conclude 1
+  //   + ③(callCloudModel 1 + evaluate 的 decompose/conclude 2) = 6
+  assert(checkLlmQuota({}).used === 6, `⑥ 401 也计数：累计 ${checkLlmQuota({}).used} 次（期望 6）`)
 }
 
 // ── ④ 超时降级 ──
@@ -157,6 +170,13 @@ configureCloudModel({
   assert(t === null, '⑤ 未启用 → null')
 }
 
+if (typeof server.closeAllConnections === 'function') server.closeAllConnections()
 server.close()
+// ⑥ 计数总计：④ 超时调用也计 1 次（=7）；⑤ 离线（无适配器）不计数
+{
+  const q = checkLlmQuota({})
+  assert(q.used === 7 && q.limit === 20, `⑥ 计数总计 ${q.used}/${q.limit}（期望 7/20；⑤ 离线不计数）`)
+}
+rmSync(QUOTA_FILE, { force: true })
 console.log(`\n===== MOCK LLM E2E: ${pass} PASS / ${fail} FAIL =====`)
 process.exit(fail ? 1 : 0)

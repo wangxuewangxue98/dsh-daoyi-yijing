@@ -3,18 +3,23 @@ import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { evaluate } from '../../lib/yijing/reviewer.mjs'
 import { getBuiltinScript } from '../../lib/yijing/checkpoints.mjs'
 import { loadCustomScript } from '../../lib/yijing/registry.mjs'
+import { buildEffectiveConfig } from './divine.mjs'
 
 export const TOOL_PARAMS = {
   matter: { type: 'string', description: '决策事项（同 yijing_divine）' },
   script: {
     oneOf: [
-      { type: 'string', description: '剧本 id：内置 motor-design / stock-trend / demo-384，或已加载自定义剧本 id' },
+      { type: 'string', description: '剧本 id：内置 motor-design / stock-trend / demo-384 / commercial，或已加载自定义剧本 id' },
       { type: 'object', additionalProperties: true, description: '自定义剧本 JSON 对象' },
     ],
     description: '剧本 id 或 JSON；缺省走默认剧本 motor-design',
   },
   inputs: { type: 'object', additionalProperties: true, description: '检查点取值覆盖' },
   reportStyle: { type: 'string', enum: ['classic', 'plain'], description: '报告风格' },
+  model: {
+    type: 'string',
+    description: '可选：本次调用覆盖模型（厂商 id / 自定义模型名 / session=DSH 会话当前模型），缺省走插件配置默认',
+  },
 }
 
 function formatReport(result) {
@@ -31,6 +36,14 @@ function formatReport(result) {
     ' 少阴=' + result.sixiang.少阴.length + ' 太阴=' + result.sixiang.太阴.length)
   lines.push('【三才】天=' + (result.sancai.tian?.score ?? 0) + ' 地=' + (result.sancai.di?.score ?? 0) +
     ' 人=' + (result.sancai.ren?.score ?? 0))
+  if (result.llm) {
+    const q = result.llm.quota || {}
+    lines.push(
+      '【云模型】' + (result.llm.active ? `${result.llm.provider}/${result.llm.model || '(默认)'}` : '未启用（离线模板）') +
+        '｜LLM 额度 ' + (q.enabled === false ? '闸门关闭' : `${q.used}/${q.limit} 次/天（余 ${q.remaining}）`),
+    )
+    if (result.llm.quota_blocked) lines.push('【额度提示】' + result.llm.notice)
+  }
   lines.push('【结论文案】\n' + result.conclusion_text)
   return lines.join('\n')
 }
@@ -44,6 +57,7 @@ export async function runYijingReport(args = {}, config = {}, writeToDisk = fals
   const result = await evaluate(args.matter || '(未提供)', script || 'motor-design', {
     inputs: args.inputs || {},
     reportStyle: args.reportStyle || config.reportStyle || 'classic',
+    config: buildEffectiveConfig(config, args.model),
   })
   const text = formatReport(result)
   if (writeToDisk) {

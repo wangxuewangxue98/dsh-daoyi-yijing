@@ -6,7 +6,8 @@ import { fileURLToPath, URL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { configureRegistry } from './lib/yijing/registry.mjs'
 import { runSelfCheck } from './lib/yijing/selfcheck.mjs'
-import { configureCloudModel } from './lib/yijing/cloud-model.mjs'
+import { configureCloudModel, parseCustomModels } from './lib/yijing/cloud-model.mjs'
+import { checkLlmQuota } from './lib/yijing/quota.mjs'
 
 export const name = 'dsh-daoyi-yijing'
 
@@ -24,7 +25,7 @@ export const inject = ['tools']
 
 export const Config = Schema.object({
   // ---- 剧本 ----
-  defaultScript: Schema.string().default('motor-design').description('默认决策剧本 id（motor-design=电机电磁设计·万事决 / stock-trend=股票趋势研判）'),
+  defaultScript: Schema.string().default('motor-design').description('默认决策剧本 id（motor-design=电机电磁设计·万事决 / stock-trend=股票趋势研判 / commercial=商业成功率）'),
   allowCustomScript: Schema.boolean().default(true).description('允许 JSON 自定义剧本'),
   strongVetoEnabled: Schema.boolean().default(true).description('强关联一票否决（引擎灵魂，默认开）'),
   reportStyle: Schema.union(['classic', 'plain']).default('classic')
@@ -34,7 +35,7 @@ export const Config = Schema.object({
   cloudModelEnabled: Schema.boolean().default(false)
     .description('启用真实云模型（默认 OFF；开启后 L1→L7 分解与卦象文案由模型生成）'),
   cloudModelProvider: Schema.string().default('deepseek')
-    .description('厂商：deepseek/qwen/glm/moonshot/minimax/openai/custom'),
+    .description('厂商：deepseek/qwen/glm/moonshot/minimax/openai/custom，或自定义模型清单里的 name，或 session=DSH 会话当前模型'),
   cloudModelApiKey: Schema.string().default('')
     .description('云模型 API Key（Bearer；绝不外发、不入日志；也可用环境变量 DAOYI_LLM_API_KEY）'),
   cloudModelName: Schema.string().default('')
@@ -46,9 +47,25 @@ export const Config = Schema.object({
   cloudModelEndpoint: Schema.string().default('')
     .description('旧版简易协议端点（POST {messages}）；留空则不用'),
 
-  // ---- 免费额度本地闸门（与 dsh-motor-ai-l0 同口径，本地闭环、断网也拦）----
-  freeQuotaEnabled: Schema.boolean().default(true).description('本地闭环免费额度闸门'),
-  freeDailyLimit: Schema.number().default(10).description('每日免费额度'),
+  // ---- 自定义模型清单（v0.3.4）----
+  cloudModelCustomModels: Schema.string().default('')
+    .description(
+      '自定义模型清单（JSON 数组字符串）：[{"name":"my-gpt","label":"我的 GPT","baseUrl":"https://.../v1","model":"gpt-4o","keyEnv":"OPENAI_API_KEY"}]；' +
+        'name 即选用 id（cloudModelProvider 或工具 model 参数传它）；也可用环境变量 DAOYI_LLM_CUSTOM_MODELS',
+    ),
+  // ---- DSH 会话当前模型（v0.3.4，可选）----
+  cloudModelUseSessionModel: Schema.boolean().default(false)
+    .description(
+      '可选：使用 DSH 会话当前模型（等价 provider=session）。来源为 DSH Runtime 注入的 config.sessionModel' +
+        '（函数或 {baseUrl,model,apiKey}）或环境变量 DAOYI_LLM_SESSION_BASE_URL/MODEL/API_KEY；未注入则离线模板',
+    ),
+
+  // ---- 免费额度本地闸门（按 LLM 调用计数；本地闭环、断网也拦）----
+  freeQuotaEnabled: Schema.boolean().default(true).description('本地闭环免费额度闸门（按 LLM 调用计数）'),
+  freeLlmDailyLimit: Schema.number().default(20)
+    .description('每日免费 LLM 调用额度（按调用计数：一次推演 = decompose + conclude 共 2 次；离线推演不计数）'),
+  freeDailyLimit: Schema.number().default(10)
+    .description('（兼容别名，deprecated）v0.3.4 前「每日推演次数」口径；设置后等同 freeLlmDailyLimit'),
 
   // ---- 合规：脱敏回传默认关 ----
   telemetryEnabled: Schema.boolean().default(false).description('脱敏回传默认关'),
@@ -56,24 +73,41 @@ export const Config = Schema.object({
 })
 
 export async function apply(ctx, config) {
-  // 0) 云模型适配器（config + 环境变量双源；未启用/无密钥 → 离线确定性模板）
-  const cloud = configureCloudModel(config)
+  // 0) DSH 会话当前模型注入（可选）：Runtime 可经 ctx.sessionModel / config.sessionModel 提供。
+  //    注入后若用户未显式选其他厂商（provider 仍为缺省 deepseek/session），优先会话模型。
+  const sessionModel = config?.sessionModel || ctx?.sessionModel || null
+  let cloudConfig = config
+  if (sessionModel) {
+    const provider = String(config?.cloudModelProvider || '').toLowerCase()
+    if (!provider || provider === 'deepseek' || provider === 'session') {
+      cloudConfig = { ...config, sessionModel, cloudModelProvider: 'session' }
+    } else {
+      cloudConfig = { ...config, sessionModel }
+    }
+  }
 
-  // 1) 自定义剧本 fs 持久化目录 → 启动回灌
+  // 1) 云模型适配器（config + env 双源；未启用/无密钥 → 离线确定性模板）
+  const cloud = configureCloudModel(cloudConfig)
+  const customModels = parseCustomModels(cloudConfig)
+  const quota = checkLlmQuota(cloudConfig)
+
+  // 2) 自定义剧本 fs 持久化目录 → 启动回灌
   const dataDir = join(dirname(fileURLToPath(new URL('./', import.meta.url))), 'data', 'scripts')
   const loaded = configureRegistry(dataDir)
 
-  // 2) 加载自校验（纯 lib，零 Runtime 依赖）
+  // 3) 加载自校验（纯 lib，零 Runtime 依赖）
   const check = runSelfCheck(config)
   ctx.logger?.info?.(
     `[道一-易经推演] 自校验 ${check.ok ? '通过' : '失败:' + JSON.stringify(check.issues)}` +
       `；自定义剧本回灌 ${loaded} 个` +
-      `；云模型 ${cloud.active ? `已启用(${cloud.provider}/${cloud.model})` : '未启用(离线模板)'}`,
+      `；云模型 ${cloud.active ? `已启用(${cloud.provider}/${cloud.model || '(默认)'})` : '未启用(离线模板)'}` +
+      (customModels.length ? `；自定义模型 ${customModels.length} 个` : '') +
+      `；LLM 额度 ${quota.enabled ? `${quota.used}/${quota.limit} 次/天` : '闸门关闭'}`,
   )
 
-  // 3) 注册工具
+  // 4) 注册工具
   const { registerYijingTools } = await import('./tools/yijing/index.mjs')
-  const tools = await registerYijingTools(ctx, config)
+  const tools = await registerYijingTools(ctx, cloudConfig)
   ctx.logger?.info?.(
     `[道一-易经推演] v${PLUGIN_VERSION} 已加载，默认剧本=${config.defaultScript}，` +
       `强否决=${config.strongVetoEnabled}，工具=${tools.join(',')}`,
