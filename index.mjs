@@ -53,7 +53,12 @@ export const Config = Schema.object({
       '自定义模型清单（JSON 数组字符串）：[{"name":"my-gpt","label":"我的 GPT","baseUrl":"https://.../v1","model":"gpt-4o","keyEnv":"OPENAI_API_KEY"}]；' +
         'name 即选用 id（cloudModelProvider 或工具 model 参数传它）；也可用环境变量 DAOYI_LLM_CUSTOM_MODELS',
     ),
-  // ---- DSH 会话当前模型（v0.3.4，可选）----
+  // ---- DSH 会话当前模型（v0.3.4，可选；v0.5.1 起默认自动）----
+  cloudModelAutoSession: Schema.boolean().default(true)
+    .description(
+      '对话中自动使用 DSH 会话当前模型：Runtime 注入 config.sessionModel 且未配置自有 apiKey 时自动启用，' +
+        '无需手动开 cloudModelEnabled、无需自备 Key（仍受免费额度速率闸门约束）；设 false 关闭自动',
+    ),
   cloudModelUseSessionModel: Schema.boolean().default(false)
     .description(
       '可选：使用 DSH 会话当前模型（等价 provider=session）。来源为 DSH Runtime 注入的 config.sessionModel' +

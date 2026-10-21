@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.5.0
+  version: 0.5.1
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -62,13 +62,21 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
 - **免费 LLM 节流（v0.4.2）**：主节流为**每分钟速率上限**（默认 10 次/60s 滑动窗口，`freeLlmPerMinute`），
   超出进入 FIFO 队列**排队等待**，不拒绝不降级；每日硬上限 `freeLlmDailyLimit` 默认 0（关闭）作为可选兜底；
   `freeQuotaEnabled:false` 为运维旁路；`yijing_model_list` 可查额度快照（只读）。
+- **对话中自动借用会话大模型（v0.5.1，默认开）**：Runtime 注入 `config.sessionModel` 且用户未配置
+  自有 `apiKey` 时**自动启用当前对话的模型**——无需手动开 `cloudModelEnabled`、无需自备 Key
+  （仍受 v0.4.2 速率闸门约束）。关闭：`cloudModelAutoSession:false` 或显式 `cloudModelEnabled:false`；
+  自备 Key 时不抢会话模型（走用户厂商路径）。
 - **64 卦判词库（v0.5.0）**：离线 L1 文案不再只有 verdict 三选一——`lib/yijing/hexagram-texts.mjs`
   为全部 64 卦提供独立判词（卦辞要义+行事建议+卦性），动爻变卦行带变卦判词；
   由 `scripts/test_hexagram_texts.mjs`（19 断言：双射一致/64 判词互异/离线文案逐卦唯一）守护。
-- **可选在线模式（v0.5.0）**：`adapters/quote.mjs` 腾讯行情适配层（批量、免费、无鉴权），
-  透明归一化（PE 分段锚定→GZ、收盘位置→JS01、换手×方向→JS04、振幅→JS08；亏损/无字段→NA）；
+- **可选在线模式（v0.5.0，v0.5.1 增强）**：`adapters/quote.mjs` 腾讯行情适配层（批量、免费、无鉴权），
+  透明归一化（PE **对数连续映射**→GZ01、收盘位置→JS01、换手×方向→JS04、振幅→JS08、
+  **外盘/内盘净主动买入**→ZJ01（真实资金流，与涨跌%解耦）；亏损/无字段→NA）；
   断网/超时/字段缺失回退 NA，整体失败回退基线，**离线核心不被污染**；代理环境用
   `createCurlFetcher({proxy})` 注入 fetcher。批处理：`node scripts/divine_batch_stocks.mjs --live`。
+- **卦象分位数编码（v0.5.1）**：爻二值化由绝对阈值 `≥0.5` 改为**批次内中位数分位**
+  （`hexagram.quantileThresholds`），使每个活跃爻阴阳各半（满熵）；批次内取值唯一的域判为
+  `frozen` → **恒阴**（消除 NA 恒阳偏置）。单批卦种上限 = 2^(有效独立爻数)，当前 4 爻→上限 16。
 - **离线/断网降级**：未配置或调用失败（401/超时/断网）时，L1→L7 返回结构化因数清单（剧本骨架），
   L1 文案走确定性模板（64 卦判词头 + 动爻变卦 + 八宫明细），推演结论依然成立、verdict 不受影响。
 

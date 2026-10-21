@@ -21,7 +21,7 @@
 
 import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpoints.mjs'
 import { evaluate } from '../lib/yijing/reviewer.mjs'
-import { resolveHexagramForScript } from '../lib/yijing/hexagram.mjs'
+import { resolveHexagramForScript, quantileThresholds } from '../lib/yijing/hexagram.mjs'
 import { fetchSignalsForStocks, RULES_TEXT } from '../adapters/quote.mjs'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -229,7 +229,8 @@ export async function runBatch(opts = {}) {
     )
   }
 
-  const results = []
+  // ---- 阶段 1：逐只 evaluate，收集 8 宫分（卦象延后，因需全批次分位数）----
+  const pending = []
   const secAvg = stocks === STOCKS ? sectorAvg : sectorAvgOf(stocks)
   for (const stock of stocks) {
     const [name, code, price, pct, sector, flag] = stock
@@ -240,18 +241,27 @@ export async function runBatch(opts = {}) {
     const matter = `${name}(${code}) 本周内涨跌研判`
     const r = await evaluate(matter, s, { inputs })
 
-    // 卦象：8 宫分 = 实际聚合分（NA 宫取 0.5 中性），保持 64 卦层可用
+    // 8 宫分 = 实际聚合分（NA 宫取 0.5 中性），保持 64 卦层可用
     const scores8 = {}
     for (const d of s.domains) {
       scores8[d.code] = r.domain_results[d.code]?.score ?? 0.5
     }
-    const hx = resolveHexagramForScript(scores8, s)
+    pending.push({ stock, name, code, price, pct, sector, flag, r, s, signals, scores8, activeDomains: [...new Set(signals.map((x) => x.code))] })
+  }
 
-    const activeDomains = [...new Set(signals.map((x) => x.code))]
+  // ---- 阶段 2：批次分位数阈值（满熵编码）——每个"进卦域"在本批次内阴阳各半；
+  //      批次内取值唯一的域（如 NA 被填成同一值）判定为 frozen → 恒阴，消除 NA 恒阳偏置 ----
+  const qt = quantileThresholds(pending.map((p) => p.scores8))
+
+  // ---- 阶段 3：逐只定卦象 ----
+  const results = []
+  for (const p of pending) {
+    const { stock, r, s, signals, scores8, activeDomains, name, code, price, pct, sector, flag } = p
+    const hx = resolveHexagramForScript(scores8, s, qt.thresholds)
     const a = assess(stock, r, activeDomains, r.coverage.coverage)
     results.push({
-      name, code, price, pct, sector, flag,
-      sector_avg: Number(sectorAvg[sector].toFixed(2)),
+      name: p.name, code: p.code, price: p.price, pct: p.pct, sector: p.sector, flag: p.flag,
+      sector_avg: Number((secAvg[sector] ?? 0).toFixed(2)),
       signals: signals.map((x) => ({ domain: x.code, sub: x.subIdx + 1, delta: Number(x.delta.toFixed(4)), rule: x.rule || null })),
       active_domains: activeDomains,
       domain_scores: Object.fromEntries(Object.entries(scores8).map(([k, v]) => [k, Number(v.toFixed(4))])),
@@ -292,6 +302,20 @@ export async function runBatch(opts = {}) {
       engine: `dsh-daoyi-yijing v0.5.0（确定性引擎${live ? '，在线模式：腾讯行情适配层' : '，离线模式'}，零 LLM 额度消耗）`,
       mode: liveMeta.mode,
       live: live ? liveMeta : null,
+      hex_encoding: {
+        mode: 'batch-quantile', // 批次内中位数分位（满熵），取代绝对阈值 0.5
+        thresholds: Object.fromEntries(
+          Object.entries(qt.thresholds).map(([k, v]) => [k, Number.isFinite(v) ? Number(v.toFixed(4)) : 'frozen']),
+        ),
+        frozen_domains: qt.frozen, // 批次内取值唯一 → 恒阴（无分化能力，待补数据）
+        // 有效爻数 k = 真正进卦的 6 个域（天3 + 地3）中未被冻结的数量；卦种上限 = 2^k
+        //   （旧式 8 − frozen(非XX/FX) 基于「XX/FX 不进卦」的旧三才假设，三才重排后已失效）
+        in_hex_domains: [...(script.sancai_mapping.tian || []).slice(0, 3), ...(script.sancai_mapping.di || []).slice(0, 3)],
+        active_yao_count: [...(script.sancai_mapping.tian || []).slice(0, 3), ...(script.sancai_mapping.di || []).slice(0, 3)]
+          .filter((c) => !qt.frozen.includes(c)).length,
+        domain_distinct: qt.stats,
+        note: '有效独立爻数决定卦种上限（2^k）；frozen 域不贡献种类，需补真实数据才能激活',
+      },
       rules: '见脚本头注释' + (live ? '与 adapters/quote.mjs RULES_TEXT' : '') + '；无数据域一律 NA，不造假填充',
       count: results.length,
       disclaimer: '结构化多因子研判示意，不构成任何投资建议',

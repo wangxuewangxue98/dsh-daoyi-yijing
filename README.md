@@ -50,7 +50,7 @@ node scripts/divine_stock_600711.mjs   # 盛屯矿业(600711) 一个月涨跌推
 | 环境变量（推荐，密钥不落盘） | `DAOYI_LLM_API_KEY=sk-xxx DAOYI_LLM_PROVIDER=deepseek node scripts/divine_with_llm.mjs "决策事项" commercial` |
 | 插件配置 | `cordis.patch.yml` / Config：`cloudModelEnabled: true` + `cloudModelProvider` + `cloudModelApiKey` + `cloudModelName` |
 | 代码注入 | `setCloudModelAdapter(fn)`（测试 / DSH Runtime） |
-| DSH 会话当前模型（可选） | `cloudModelProvider: 'session'`（或 `cloudModelUseSessionModel: true`），由 Runtime 注入 `config.sessionModel`，或 env `DAOYI_LLM_SESSION_BASE_URL/MODEL/API_KEY` |
+| **DSH 会话当前模型（v0.5.1 起默认自动）** | 对话中被调用时**自动使用当前对话的模型**——Runtime 注入 `config.sessionModel`（或 env `DAOYI_LLM_SESSION_*`）即生效，**无需手动开 `cloudModelEnabled`、无需自备 Key**。关闭：`cloudModelAutoSession: false`（或显式 `cloudModelEnabled: false`）；自备 `apiKey` 时不抢会话模型 |
 
 - 厂商预设：`deepseek`(deepseek-chat) / `qwen`(qwen-max) / `glm`(glm-4-plus) / `moonshot`(moonshot-v1-8k) /
   `minimax`(abab6.5s-chat) / `openai`(gpt-4o-mini) / `custom`（自填 Base URL，任意 OpenAI 兼容端点）。

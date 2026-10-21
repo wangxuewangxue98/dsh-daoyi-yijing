@@ -60,6 +60,22 @@ async function main() {
     resetRateLimit()
   }
 
+  // ── ①b 防抖动回归：queued 不得由 Date.now() 差值推断（v0.5.1 修复）──
+  //    修复前：同一 tick 跨过毫秒边界时 waitMs=1 → 即时放行被误报 queued=true
+  //    （实测约 1/6 批次复现）。此处用 30 次连续调用把复现概率压到近乎必然。
+  {
+    // 用远大于调用次数的 limit（1000），确保 30 次调用在语义上**都应即时放行**，
+    // 于是 queued=true 只可能来自「用 Date.now() 差值误判」这一 bug。
+    const cfgs2 = [{ freeLlmPerMinute: 1000 }, { freeLlmPerMinute: 1000 }]
+    let bad = 0
+    for (let i = 0; i < 30; i++) {
+      const r = await acquireLlmRateLimit(cfgs2[i % 2], 't')
+      if (r.queued !== false) bad++
+    }
+    assert(bad === 0, `①b 30 次连续即时放行全部 queued=false（异常 ${bad} 次）`)
+    resetRateLimit()
+  }
+
   // ── ② 排队等待：limit=2，第 3 次入队，约一个窗口后补位 ──
   {
     const cfg = { freeLlmPerMinute: 2 }

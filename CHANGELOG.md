@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 0.5.1 (2026-10-21)
+### 卦象多样性提升（去相关 + 满熵编码）+ 对话中自动借用会话大模型
+- **卦象编码改为批次内分位数（③ 编码优化）**：
+  - 旧：每爻用绝对阈值 `score ≥ 0.5` 二值化。当某域分数整体偏高/偏低时该爻恒阳或恒阴 → **该爻信息量为 0**（熵 0，卦种上限减半）。
+  - 新：`hexagram.quantileThresholds(samples)` 取批次内中位数作阈值，使每个活跃爻**阴阳各半（满熵）**；`buildYaos/resolveHexagram/resolveHexagramForScript` 新增可选 `thresholds` 参数（不传则行为完全不变，向后兼容）。
+  - **冻结域恒阴**：批次内取值唯一的域（如 NA 被填成同一值 0.5）判定为 `frozen`，阈值 `Infinity` → 恒阴，**消除长期存在的「NA 恒阳偏置」**（旧行为会让无数据域全判为阳、卦象偏向乾系）。
+  - 批处理脚本改为两阶段（先 evaluate 收集全批次域分 → 求分位数 → 再定卦象），`meta.hex_encoding` 输出阈值/frozen/各域取值多样性，可审计。
+  - 测试 `scripts/test_hex_encoding.mjs`（15 断言）：frozen 判定、恒阴、满熵（实测「JS 全 >0.5」场景下绝对阈值 20/20 全阳 vs 分位数 10/20 各半）、端到端卦种数 13→15、向后兼容。
+- **ZJ 资金面改用真实资金流（① 去相关）**：
+  - 旧：ZJ01 = 涨跌幅代理，**与 JS02 同源** → 两个爻实际是一个比特（这是卦象只有 8~15 种的主因）。
+  - 新：`adapters/quote.mjs` 解析腾讯行情 **外盘/内盘**（`[7]/[8]`，恒等式 外盘+内盘=成交量 已实测校验），`ZJ01 = 净主动买入占比 × 2.5`，与涨跌% 不同源。
+  - 实测解耦证据：紫金矿业 −2.45% 但资金净买 +0.16；科大讯飞 +2.55% 但资金净卖 −0.004；工商银行 −0.23% 但净买 +0.14。
+  - 无外盘/内盘字段时回退涨跌幅代理并标注 `-fallback`。
+  - **GZ01 改对数连续映射** `(ln20 − ln PE) × 0.25`：原分段锚定把多只压成同一值，削弱该爻分化能力。
+  - 测试 `scripts/test_quote_adapter.mjs` 58 → **66 断言**。
+- **对话中自动使用当前对话的大模型（LLM）**：
+  - 需求：插件在 DSH 对话中被调用时，自动使用当前对话的模型，**无需手动开 `cloudModelEnabled`、无需自备 API Key**。
+  - 现状：`apply()` 已有「provider 为默认时自动切 session」逻辑，但被 `cloudModelEnabled: false` 默认值挡住（session 分支 `enabled = active && config.cloudModelEnabled !== false` → false）。
+  - 新增 `cloudModelAutoSession`（**默认 true**）：Runtime 注入 `config.sessionModel` 且用户未配置自有 `apiKey` 时自动启用，仍受 v0.4.2 速率闸门（10 次/分钟 + 排队）约束；`cloudModelAutoSession:false` 或显式 `cloudModelEnabled:false` 可关闭。
+  - 修复真 bug：自备 apiKey 时仍误走 session 分支导致自有 Key 失效 → `useSession` 增加 `!hasOwnApiKey` 条件。
+  - 测试 `scripts/test_auto_session.mjs`（15 断言）：自动启用/有 Key 不抢/关闭途径/env 形态/手动模式。
+- **实测（2026-10-21 真实行情 56/56）**：在线模式卦象种类 **8 → 11 种**（4 个活跃爻，理论上限 16；JB/HG 仍 frozen 待补数据）；离线 5 种但卦象由「全乾系」转为「坎/坤系」（偏置已修）。
+- **修复真 bug：速率限制器 `queued` 误报（P1）**：
+  - 旧：`pumpRate` 用 `queued: waitMs > 0` 判定是否排队，而 `waitMs = Date.now() - enqueuedAt` 是**同一 tick 内的毫秒差值**。一旦跨过毫秒边界，即时放行的调用也会被判成「已排队等待 1ms」，进而在结果里向用户输出并不存在的排队提示。
+  - 实测抖动：连续跑 `test_rate_limit` 约 **1/6 批次复现**（20 PASS / 1 FAIL），属发布前必须消除的不确定性。
+  - 新：`queued` 改为**语义判定**——入队项带 `inline` 标记，只有「本调用自己的同步泵没放行、后被补位」才算 `queued=true`（`quota.mjs`）；`waitMs` 仍为真实等待时长。
+  - 新增防抖动回归断言 `①b`：`freeLlmPerMinute=1000` 下连续 30 次调用必须全部 `queued=false`（修复前必然触发）。
+- **质量门**：9 套件 **281 断言全 PASS**（verify 27 + hexagram 29 + verdict 4 + rate_limit **22** + 判词 19 + **编码 15** + 适配层 **99** + **自动会话 15** + quota 51）；其中 `test_rate_limit` 连续 15 次复跑 **15/15 稳定通过**（修复前 12/12 全部抖动）。
+- **已知限制（诚实披露）**：单批卦种上限 = 2^(有效独立爻数)；当前 4 爻 → 上限 16，实测 11（HY 仅 4 档 + 残留相关）。要到 26+ 需补 JB/HG（阶段②，需财务/宏观数据源）；要在 56 只规模触达 64 种**结构上不可能**（需 ~300 只样本）。
+
 ## 0.5.0 (2026-10-21)
 ### 补全 64 卦判词 + 可选在线模式（行情适配层）
 - **补全 64 卦判词**（新模块 `lib/yijing/hexagram-texts.mjs`）：

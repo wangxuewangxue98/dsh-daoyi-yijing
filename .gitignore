@@ -8,3 +8,7 @@ node_modules/
 # 系统
 .DS_Store
 Thumbs.db
+
+# 补丁脚本备份
+*.bak.*
+index.mjs.bak*

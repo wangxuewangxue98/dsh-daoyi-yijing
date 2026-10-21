@@ -11,6 +11,7 @@ import {
   buildOrderFromScript,
   resolveHexagramForScript,
   hexNameFromYaos,
+  TRIGRAM_BY_LINES,
 } from '../lib/yijing/hexagram.mjs'
 
 let fail = 0
@@ -24,15 +25,29 @@ const ok = (c, m) => {
 
 const stock = getBuiltinScript('stock-trend')
 const order = buildOrderFromScript(stock)
-// 6 主域（下卦3 + 上卦3），顺序与引擎聚合严格一致
-const sixCodes = [...order.lower, ...order.upper] // [JS, ZJ, GZ, JB, HY, HG]
+// 6 主域（初爻→上爻，自下而上），顺序与引擎聚合严格一致
+const sixCodes = [...order.lower, ...order.upper] // [JS, ZJ, GZ, HG, HY, FX]（见 checkpoints.mjs YAO_SEMANTICS）
 
 // 本地《周易》正名参考表（键 = 上卦+下卦，如 乾为天=乾乾、泽天夬=兑乾）
 // 用于逐一核对 HEXAGRAMS 是否有错位/重名/遗漏。
+// 本地《周易》八卦取象歌参考表（独立实现，用于交叉校验引擎的 TRIGRAM_BY_LINES）
+// ⚠ v0.5.1：修正 震/巽 互换——震仰盂(下阳中上阴)='001'、巽下断(下阴中上阳)='110'。
+//   两处曾同时标错，导致测试与引擎"互相印证"，bug 长期藏匿 → 故另设「按取象歌逐卦校验」硬断言。
 const TRIGRAM = {
-  '111': '乾', '011': '兑', '101': '離', '110': '震',
-  '001': '巽', '010': '坎', '100': '艮', '000': '坤',
+  '111': '乾', '011': '兑', '101': '離', '001': '震',
+  '110': '巽', '010': '坎', '100': '艮', '000': '坤',
 }
+// 取象歌硬断言：三爻自下而上（下,中,上）→ 卦名。这是唯一不可被「两边同时标错」绕过的校验。
+const QU_XIANG_GE = [
+  [[1, 1, 1], '乾', '乾三连：三阳'],
+  [[0, 0, 0], '坤', '坤六断：三阴'],
+  [[1, 0, 0], '震', '震仰盂：下阳、中上阴'],
+  [[0, 1, 1], '巽', '巽下断：下阴、中上阳'],
+  [[0, 1, 0], '坎', '坎中满：中阳、上下阴'],
+  [[1, 0, 1], '離', '離中虚：中阴、上下阳'],
+  [[0, 0, 1], '艮', '艮覆碗：上阳、中下阴'],
+  [[1, 1, 0], '兑', '兑上缺：上阴、中下阳'],
+]
 const tri = (top, mid, bot) => TRIGRAM[`${top}${mid}${bot}`]
 const CANONICAL = {
   '乾乾': '乾为天', '兑乾': '泽天夬', '離乾': '火天大有', '震乾': '雷天大壮',
@@ -53,8 +68,32 @@ const CANONICAL = {
   '巽坤': '风地观', '坎坤': '水地比', '艮坤': '山地剥', '坤坤': '坤为地',
 }
 const canonNames = new Set(Object.values(CANONICAL))
+const sixNames = [...order.lower, ...order.upper]
 
 console.log('== 64 卦映射专项测试 (stock-trend) ==')
+console.log(`    6 主域（初→上）: ${sixNames.join(' → ')}`)
+
+// ---- 0. 八卦取象歌硬校验（防 震/巽 类互换复发：不依赖本地 TRIGRAM 副本）----
+for (const [lines, expect, desc] of QU_XIANG_GE) {
+  const key = `${lines[2]}${lines[1]}${lines[0]}` // (上,中,下) → 引擎 key 口径
+  ok(TRIGRAM_BY_LINES[key] === expect, `取象歌：${desc} → ${expect}（引擎得 ${TRIGRAM_BY_LINES[key]}）`)
+}
+ok(
+  Object.keys(TRIGRAM_BY_LINES).length === 8 && new Set(Object.values(TRIGRAM_BY_LINES)).size === 8,
+  '八卦 8 个 key 互异且映射 8 个互异卦名（无重名）',
+)
+
+// ---- 0b. 爻位语义 vs 引擎 order 一致性（防 tian/di 内顺序被无意识改动）----
+for (const sem of stock.yao_semantics || []) {
+  ok(
+    sixCodes[sem.pos - 1] === sem.domain,
+    `${sem.yao}(第${sem.pos}爻·${sem.semantics}) → ${sem.domain}：引擎实际占位 ${sixCodes[sem.pos - 1] || '(空)'}`,
+  )
+}
+ok(
+  (stock.yao_semantics || []).length === 6 && sixCodes.length === 6,
+  '语义表 6 条全覆盖 6 爻位（无缺位/多位）',
+)
 
 // ---- 1. 已知基准 ----
 const allYang = Object.fromEntries(sixCodes.map((c) => [c, 1.0]))
@@ -122,10 +161,11 @@ ok(
 const allBound = Object.fromEntries(sixCodes.map((c) => [c, 0.5])) // 恰 0.5 → 阳
 ok(resolveHexagramForScript(allBound, stock).name === '乾为天', 'score 恰 0.5 → 阳爻（边界含入）')
 const scNA = { ...allYang }
-delete scNA[sixCodes[3]] // 模拟 JB 域 NA（缺键）
+delete scNA[sixCodes[3]] // 模拟四爻域 NA（缺键）
 const gNA = resolveHexagramForScript(scNA, stock)
-// JB 在 upper 第 1 位（bit3）；缺失 → 阴(0) → upper=(HG=1,HY=1,JB=0)=震，lower=乾 → 雷天大壮
-ok(gNA.name === '雷天大壮', `NA 域(${sixCodes[3]} 缺) → 阴爻(0)，与 0.5 中性覆盖不同（得 ${gNA.name}）`)
+// 四爻域缺失 → 阴(0)；上卦三爻 =(上${codes[5]},中${codes[4]},下${codes[3]})=(1,1,0)=巽，下卦=乾
+//   → 巽上乾下 = 风天小畜。（震巽修正前此处为"雷天大壮"，即被互换的错误卦名）
+ok(gNA.name === '风天小畜', `NA 域(${sixCodes[3]} 缺) → 阴爻(0)，与 0.5 中性覆盖不同（得 ${gNA.name}）`)
 
 console.log(fail === 0 ? '\nRESULT: PASS' : `\nRESULT: FAIL (${fail})`)
 process.exit(fail === 0 ? 0 : 1)

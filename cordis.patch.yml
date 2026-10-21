@@ -21,6 +21,7 @@
         # ---- 自定义模型清单（JSON 数组字符串；name 即选用 id，也可用 env DAOYI_LLM_CUSTOM_MODELS）----
         cloudModelCustomModels: ''
         # ---- DSH 会话当前模型（可选；由 Runtime 注入 config.sessionModel，或 env DAOYI_LLM_SESSION_*）----
+        cloudModelAutoSession: true               # 对话中自动借用当前对话的大模型（无需开 enabled、无需自备 Key；false=关闭自动）
         cloudModelUseSessionModel: false
         # ---- 免费额度闸门（v0.4.2：主节流=每分钟速率+排队等待；每日硬上限降级为可选兜底）----
         freeQuotaEnabled: true                # 免费 LLM 节流总开关（false=运维/授权旁路，不限速不计数）

@@ -46,15 +46,31 @@ function fixtureLine(overrides = {}) {
     name: '工商银行', code: '601398', price: 8.58, prevClose: 8.6, open: 8.58,
     change: -0.02, pct: -0.23, high: 8.65, low: 8.52, volume: 1234567, amount: 106000,
     turnover: 0.05, pe: 8.05, totalCap: 30116, pb: 0.77,
+    outerVol: 800000, innerVol: 434567, // 外盘+内盘 = volume（1234567）
+    // v0.5.1 新增字段（补子域用）：不传则走下列默认，置 '' 可模拟字段缺失
+    floatCap: 22782.23, limitUp: 9.44, limitDown: 7.76, volRatio: 1.1,
+    weicha: -31489, avgPrice: 8.55, peDyn: 8.1, peStatic: 8.3, amplitudeRaw: 1.78,
   }
   Object.assign(f, overrides)
-  const arr = new Array(47).fill('0')
+  const arr = new Array(54).fill('0')
   arr[0] = '51'
   arr[1] = f.name; arr[2] = f.code; arr[3] = String(f.price); arr[4] = String(f.prevClose)
-  arr[5] = String(f.open); arr[30] = '150000'; arr[31] = String(f.change); arr[32] = String(f.pct)
+  arr[5] = String(f.open); arr[7] = String(f.outerVol); arr[8] = String(f.innerVol)
+  arr[30] = '150000'; arr[31] = String(f.change); arr[32] = String(f.pct)
   arr[33] = String(f.high); arr[34] = String(f.low); arr[36] = String(f.volume); arr[37] = String(f.amount)
   arr[38] = String(f.turnover); arr[39] = String(f.pe); arr[45] = String(f.totalCap); arr[46] = String(f.pb)
+  arr[43] = String(f.amplitudeRaw); arr[44] = String(f.floatCap)
+  arr[47] = String(f.limitUp); arr[48] = String(f.limitDown); arr[49] = String(f.volRatio)
+  arr[50] = String(f.weicha); arr[51] = String(f.avgPrice)
+  arr[52] = String(f.peDyn); arr[53] = String(f.peStatic)
   return `v_sh${f.code}="${arr.join('~')}";`
+}
+/** 指数行 fixture（与个股同构：pct[32] / amount[37] / turnover[38] / amplitude[43]） */
+function indexLine(symbol = 'sh000001', { pct = -0.6, amount = 64275156, turnover = 0.78, amplitude = 1.07 } = {}) {
+  const arr = new Array(54).fill('0')
+  arr[0] = '1'; arr[1] = '上证指数'; arr[2] = '000001'; arr[3] = '3725.5'
+  arr[32] = String(pct); arr[37] = String(amount); arr[38] = String(turnover); arr[43] = String(amplitude)
+  return `v_${symbol}="${arr.join('~')}";`
 }
 {
   const q = parseTencentQuote(fixtureLine())
@@ -77,18 +93,43 @@ ok(parseTencentQuote(42) === null, '非字符串 → null')
 {
   const cheap = parseTencentQuote(fixtureLine({ pe: 8.05 }))
   const gz = quoteToSignals(cheap).find((s) => s.code === 'GZ')
-  ok(gz && gz.delta === 0.25, `PE 8（便宜）→ GZ01 delta +0.25（实际 ${gz && gz.delta}）`)
+  // GZ01 改为对数连续映射：(ln20 − ln PE) × 0.25，clamp ±0.40
+  const gzExp = (pe) => Math.max(-0.4, Math.min(0.4, (Math.log(20) - Math.log(pe)) * 0.25))
+  ok(gz && Math.abs(gz.delta - gzExp(8.05)) < 0.001, `PE 8.05 → GZ01 delta ${gzExp(8.05).toFixed(4)}（实际 ${gz && gz.delta}）`)
 
   const mid = parseTencentQuote(fixtureLine({ pe: 15 }))
-  ok(quoteToSignals(mid).find((s) => s.code === 'GZ').delta === 0.1, 'PE 15 → +0.10')
+  ok(Math.abs(quoteToSignals(mid).find((s) => s.code === 'GZ').delta - gzExp(15)) < 0.001, 'PE 15 → 对数映射值')
 
   const rich = parseTencentQuote(fixtureLine({ pe: 96 }))
-  ok(quoteToSignals(rich).find((s) => s.code === 'GZ').delta === -0.3, 'PE 96（贵）→ −0.30')
+  ok(Math.abs(quoteToSignals(rich).find((s) => s.code === 'GZ').delta - gzExp(96)) < 0.001, 'PE 96（贵）→ 对数映射负值')
+  ok(gzExp(8.05) > gzExp(15) && gzExp(15) > gzExp(96), 'GZ01 单调：PE 越低分越高（连续可比）')
 
   const loss = parseTencentQuote(fixtureLine({ pe: '-' }))
   ok(!quoteToSignals(loss).some((s) => s.code === 'GZ'), 'PE 亏损(-) → GZ01 不评分（NA）')
 
   const flat = parseTencentQuote(fixtureLine({ pct: 0, high: 8.6, low: 8.6, price: 8.6 }))
+
+  // ZJ01 真实资金流（外盘/内盘）——与涨跌幅不同源，是解耦独立爻的关键
+  {
+    const q = parseTencentQuote(fixtureLine({ outerVol: 800000, innerVol: 434567, pct: -0.23 }))
+    ok(q.outerVol === 800000 && q.innerVol === 434567, '外盘/内盘字段解析正确')
+    ok(Math.abs(q.netActiveBuyRatio - 0.2962) < 0.001, `净主动买入占比 = (外−内)/(外+内)（实际 ${q.netActiveBuyRatio}）`)
+    const zj = quoteToSignals(q).find((s) => s.code === 'ZJ')
+    ok(zj && zj.rule === 'ZJ01-net-active-buy', `ZJ01 走真实资金流（rule=${zj && zj.rule}）`)
+    ok(zj && zj.delta > 0, '净买入 → ZJ delta 为正')
+    // 关键：当日下跌(pct<0)但资金净流入 → ZJ 与 JS 动量反向，证明已解耦
+    const js = quoteToSignals(q).find((s) => s.code === 'JS' && s.rule === 'JS02-pct')
+    ok(js && js.delta < 0 && zj.delta > 0, '跌但净买入：JS 动量负 / ZJ 资金正 → 两爻独立')
+
+    const qSell = parseTencentQuote(fixtureLine({ outerVol: 434567, innerVol: 800000, pct: 2.55 }))
+    const zjSell = quoteToSignals(qSell).find((s) => s.code === 'ZJ')
+    ok(zjSell.delta < 0, '净卖出 → ZJ delta 为负')
+
+    // 无外盘/内盘 → 回退涨跌幅代理并标注 fallback
+    const noFlow = parseTencentQuote(fixtureLine({ outerVol: '', innerVol: '' }))
+    const zjFb = quoteToSignals(noFlow).find((s) => s.code === 'ZJ')
+    ok(zjFb && zjFb.rule === 'ZJ01-pct-proxy-fallback', `无外盘/内盘 → 回退代理并标注（rule=${zjFb && zjFb.rule}）`)
+  }
   const js01 = quoteToSignals(flat).find((s) => s.code === 'JS' && s.subIdx === 0)
   ok(js01 && js01.delta === 0, `平盘无振幅 → JS01 delta 0（实际 ${js01 && js01.delta}）`)
 
@@ -108,8 +149,88 @@ ok(parseTencentQuote(42) === null, '非字符串 → null')
   const js08w = quoteToSignals(wild).find((s) => s.code === 'JS' && s.subIdx === 7)
   ok(js08w && js08w.delta === -0.1, `高振幅(≈9.3%) → JS08 −0.10（实际 ${js08w && js08w.delta}）`)
 
-  // 无数据不出信号（JB/HG 不应出现）
-  ok(!quoteToSignals(cheap).some((s) => ['JB', 'HG'].includes(s.code)), 'JB/HG 无字段 → 不出信号（NA）')
+  // v0.5.1：JB/HG 由「无数据→全域 NA」改为「proxy 口径激活首个子域」；其余子域仍必须 NA（不造假）
+  {
+    const full = quoteToSignals(cheap)
+    const jbSubs = full.filter((s) => s.code === 'JB').map((s) => s.subIdx + 1)
+    const hgSubs = full.filter((s) => s.code === 'HG').map((s) => s.subIdx + 1)
+    ok(
+      jbSubs.length === 1 && jbSubs[0] === 1 && hgSubs.length === 1 && hgSubs[0] === 1,
+      `JB/HG 仅 proxy 首子域出信号，其余仍 NA（JB=${jbSubs.join('/')||'无'}, HG=${hgSubs.join('/')||'无'}）`,
+    )
+    ok(full.find((s) => s.code === 'JB')?.rule === 'JB01-roe-proxy-pb-over-pe', 'JB01 走 ROE 代理口径（PB/PE）')
+    ok(full.find((s) => s.code === 'HG')?.rule === 'HG01-totalcap-macro-sensitivity', 'HG01 走总市值敏感度口径')
+    // ROE 代理方向：PB 不变而 PE 更低（更便宜）→ 隐含 ROE 更高 → delta 更阳
+    const hiRoe = quoteToSignals(parseTencentQuote(fixtureLine({ pe: 5, pb: 1.0 }))).find((s) => s.code === 'JB')
+    const loRoe = quoteToSignals(parseTencentQuote(fixtureLine({ pe: 40, pb: 1.0 }))).find((s) => s.code === 'JB')
+    ok(hiRoe.delta > loRoe.delta, `ROE 代理单调：PE5/PB1 → ${hiRoe.delta} > PE40/PB1 → ${loRoe.delta}`)
+  }
+
+  // v0.5.1 补子域：新增信号各自独立取数，缺字段即不出信号（不臆造）
+  {
+    const q = parseTencentQuote(fixtureLine())
+    ok(q.floatCap === 22782.23 && q.volRatio === 1.1 && q.avgPrice === 8.55, '新增原始字段解析正确（流通市值/量比/均价）')
+    ok(Math.abs(q.gapPct - (-0.2326)) < 0.01, `跳空派生正确（${q.gapPct}%）`)
+    ok(Math.abs(q.avgDev - (8.58 - 8.55) / 8.55) < 1e-4, `均价偏离派生正确（${q.avgDev}）`)
+    // 距涨跌停较近一侧：上方空间 (9.44−8.58)/8.58=0.1002，下方 (8.58−7.76)/8.58=0.0956 → 取小
+    ok(Math.abs(q.limitDist - 0.09557) < 0.001, `距涨跌停距离派生正确（${q.limitDist}）`)
+    ok(Math.abs(q.floatRatio - 22782.23 / 30116) < 1e-4, `自由流通占比派生正确（${q.floatRatio}）`)
+    ok(Math.abs(q.roeProxy - 0.77 / 8.05) < 1e-4, `ROE 代理派生正确（${q.roeProxy}）`)
+
+    const has = (o, code, sub) => quoteToSignals(parseTencentQuote(fixtureLine(o))).some((s) => s.code === code && s.subIdx + 1 === sub)
+    ok(has({}, 'JS', 6), 'JS06 均线系统（均价偏离）出信号')
+    ok(has({}, 'ZJ', 3) && has({}, 'ZJ', 7), 'ZJ03 量比 / ZJ07 自由流通比 出信号')
+    ok(has({}, 'GZ', 4), 'GZ04 业绩匹配（静态/动态 PE）出信号')
+    ok(has({}, 'FX', 8), 'FX08 止损边界（涨跌停距离）出信号')
+    ok(has({}, 'XX', 8), 'XX08 突发事件（跳空）出信号')
+    ok(!has({ volRatio: '' }, 'ZJ', 3), '缺量比 → ZJ03 不出信号（NA）')
+    ok(!has({ floatCap: '' }, 'ZJ', 7), '缺流通市值 → ZJ07 不出信号（NA）')
+    ok(!has({ peStatic: '', peDyn: '' }, 'GZ', 4), '缺动态/静态 PE → GZ04 不出信号（NA）')
+    ok(!has({ limitUp: '', limitDown: '' }, 'FX', 8), '缺涨跌停价 → FX08 不出信号（NA）')
+    ok(!has({ pb: '' }, 'JB', 1), '缺 PB → JB01 不出信号（NA）')
+  }
+
+  // v0.5.1 宏观/行业的「相对量」口径：必须逐股分化，且不得在缺指数/缺板块时冒充
+  {
+    const q = parseTencentQuote(fixtureLine({ pct: 2.0 }))
+    const idx = { symbol: 'sh000001', name: '上证指数', pct: -0.6, amountWan: 64275156, turnover: 0.78, amplitude: 1.07 }
+    const withIdx = quoteToSignals(q, { sectorPct: 1.0, sectorAmountWan: 200000, indexCtx: idx })
+    const hg03 = withIdx.find((s) => s.code === 'HG' && s.subIdx + 1 === 3)
+    ok(hg03 && hg03.delta > 0, `HG03 相对大盘：个股 +2.0% vs 指数 −0.6% → delta 为正（${hg03 && hg03.delta}）`)
+    const hy04 = withIdx.find((s) => s.code === 'HY' && s.subIdx + 1 === 4)
+    ok(hy04 && hy04.delta > 0, `HY04 相对板块：个股 +2.0% vs 板块 +1.0% → delta 为正（${hy04 && hy04.delta}）`)
+    ok(withIdx.some((s) => s.code === 'HG' && s.subIdx + 1 === 7), 'HG07 流动性占比 出信号')
+    ok(withIdx.some((s) => s.code === 'HG' && s.subIdx + 1 === 8), 'HG08 相对换手 beta 代理 出信号')
+    ok(withIdx.some((s) => s.code === 'HY' && s.subIdx + 1 === 8), 'HY08 产业链位置 出信号')
+    // 无指数基准 → 三个相对量子域全部不激活（严防"市场常数"伪指标复活）
+    const noIdx = quoteToSignals(q, { sectorPct: 1.0 })
+    ok(!noIdx.some((s) => s.code === 'HG' && [3, 7, 8].includes(s.subIdx + 1)), '无指数基准 → HG03/07/08 不激活（不伪造宏观数据）')
+  }
+
+  // v0.5.1 指数基准取数与板块截面统计（六爻四爻 HG 的数据入口）
+  {
+    const { fetchIndexQuotes, buildIndexContext, buildSectorStats } = await import('../adapters/quote.mjs')
+    const ir = await fetchIndexQuotes(['sh000001'], { fetcher: async () => indexLine() })
+    ok(ir.indexContext && ir.indexContext.pct === -0.6, `指数基准解析：上证 pct=${ir.indexContext && ir.indexContext.pct}`)
+    ok(ir.indexContext.amountWan === 64275156 && ir.indexContext.turnover === 0.78, '指数成交额/换手解析正确')
+    const degraded = await fetchIndexQuotes(['sh000001'], { fetcher: async () => '' })
+    ok(degraded.error === 'empty-response' && degraded.indexContext === null, '指数取数失败 → 上下文为 null（优雅降级）')
+    const emptyMap = new Map([['sh000001', null]])
+    ok(buildIndexContext(emptyMap) === null, '指数 Map 全空 → buildIndexContext 返回 null')
+
+    const quotes = new Map([
+      ['600036', { pct: -1.23, amount: 380000 }],
+      ['601398', { pct: -0.23, amount: 106000 }],
+      ['601899', { pct: -2.45, amount: 680000 }],
+    ])
+    const stocks = [['招行', '600036', 0, 0, '银行'], ['工行', '601398', 0, 0, '银行'], ['紫金', '601899', 0, 0, '有色']]
+    const st = buildSectorStats(stocks, quotes)
+    ok(Math.abs(st['银行'].pct - (-0.73)) < 1e-9, `板块截面均值：银行 pct=${st['银行'].pct}（源 ${st['银行'].source}）`)
+    ok(st['银行'].n === 2 && st['有色'].n === 1, '板块样本计数正确')
+    ok(st['银行'].source === 'batch-sample-mean', '未提供真实板块指数 → 口径标注为批次样本均值（可审计）')
+    const external = buildSectorStats(stocks, quotes, { 银行: 1.5 })
+    ok(external['银行'].pct === 1.5 && external['银行'].source === 'sector-index', '提供真实板块指数时优先使用并标注来源')
+  }
 
   // 板块指数可选激活 HY01
   const withSector = quoteToSignals(cheap, { sectorPct: 2.0 })
