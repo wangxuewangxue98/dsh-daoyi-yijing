@@ -50,11 +50,22 @@ export function buildEffectiveConfig(config = {}, model) {
 function compactLlm(llm) {
   if (!llm) return null
   const q = llm.quota || {}
+  const rate = llm.rate || null
+  const rateStr =
+    q.enabled === false
+      ? '闸门已关闭（不计速）'
+      : rate && rate.rateLimit === Infinity
+        ? '速率不限'
+        : `速率 ${rate ? rate.rateLimit : '?'} 次/分钟(排队等待)`
+  const dailyStr = q.limit > 0 ? `；今日 ${q.used}/${q.limit}` : ''
   return {
     active: llm.active,
     provider: llm.provider,
     model: llm.model,
-    quota: q.enabled === false ? '闸门已关闭（不计数）' : `今日 ${q.used}/${q.limit} 次（余 ${q.remaining}）`,
+    quota: rateStr + dailyStr,
+    rate: rate
+      ? { rateLimit: rate.rateLimit, queued: rate.queued, waitMs: rate.waitMs }
+      : null,
     quota_blocked: Boolean(llm.quota_blocked),
   }
 }
@@ -87,7 +98,7 @@ export async function runYijingDivine(args = {}, config = {}) {
     ),
     llm: compactLlm(result.llm),
   }
-  if (result.llm && result.llm.quota_blocked) out.notice = result.llm.notice
+  if (result.llm && result.llm.notice) out.notice = result.llm.notice
   return out
 }
 

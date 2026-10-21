@@ -62,15 +62,17 @@ node scripts/divine_stock_600711.mjs   # 盛屯矿业(600711) 一个月涨跌推
 - 安全：API Key 只从 config/env 读取，**绝不出现在日志与回传中**；`telemetryEnabled` 默认关。
 - 任何失败（401 / 超时 / 断网）自动降级为确定性模板，推演结论依然成立。
 
-## 免费额度闸门（v0.3.4 起按 LLM 调用计数）
-- **计数口径**：每次真实 LLM 外发计 1 次（一次 `yijing_divine` = decompose + conclude = **2 次**；
-  离线推演不计数、不花钱）。默认 **20 次/天**（≈10 次完整推演），`freeLlmDailyLimit` /
-  env `DAOYI_LLM_FREE_DAILY_LIMIT` 可调；`freeDailyLimit` 为兼容别名。
-- **本地硬闸**：计数只认本地 `$DSH_HOME/storages/dsh-daoyi-yijing/llm-quota.json`
+## 免费额度闸门（v0.4.2 起：每分钟速率 + 队列等待）
+- **主节流 = 每分钟速率限制**（v0.4.2 变更）：免费 LLM 调用默认上限 **10 次/分钟**（滑动窗口 60s，
+  `freeLlmPerMinute` / env `DAOYI_LLM_FREE_PER_MINUTE` 可调，0=不限制）。窗口满时后来的调用**进入 FIFO 队列排队等待**，
+  待最早的时间戳滑出窗口后逐个补位——**超出不拒绝、不降级**，仅延迟。
+- **每日硬上限降级为可选兜底**：`freeLlmDailyLimit` 默认 **0（关闭）**；仅显式配置 >0 时作为每日总闸，用尽才降级离线模板。
+- **计数口径**：每次真实 LLM 外发计 1 次（一次 `yijing_divine` = decompose + conclude = **2 次**；离线推演不计数、不花钱）。
+- **本地硬闸**：计数/限速只认本地 `$DSH_HOME/storages/dsh-daoyi-yijing/llm-quota.json`
   （env `DAOYI_LLM_QUOTA_FILE` 可覆盖），**断网也拦**，无任何后端请求/遥测。
-- **用尽不挡推演**：额度用尽后 LLM 翻译自动关闭，推演降级确定性模板继续出结论
-  （`llm.quota_blocked` / 报告【额度提示】行说明原因），次日自动重置。
-- **运维旁路**：`freeQuotaEnabled: false` → 不拦、不计数。
-- 详见 `docs/ENGINEERING.md`「免费额度闸门」节。
+- **可观测**：`evaluate` 结果 `llm.rate` 暴露 `{rateLimit, queued, waitMs}`；发生过排队时 `llm.notice` 提示等待时长；
+  `yijing_model_list` 可查额度快照（只读）。
+- **运维旁路**：`freeQuotaEnabled: false` → 不限速、不排队、不计数。
+- 详见 `docs/ENGINEERING.md`「免费额度闸门」节与 `CHANGELOG.md` 0.4.2 条目。
 
 > ⚠️ 股票推演结果由公开数据映射的因子评分驱动，属结构化多因子研判示意，**不构成任何投资建议**。

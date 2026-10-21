@@ -21,7 +21,7 @@ function readPluginVersion() {
 }
 const PLUGIN_VERSION = readPluginVersion()
 
-export const inject = ['tools', 'sessionModel?']
+export const inject = ['tools']
 
 export const Config = Schema.object({
   // ---- 剧本 ----
@@ -60,12 +60,15 @@ export const Config = Schema.object({
         '（函数或 {baseUrl,model,apiKey}）或环境变量 DAOYI_LLM_SESSION_BASE_URL/MODEL/API_KEY；未注入则离线模板',
     ),
 
-  // ---- 免费额度本地闸门（按 LLM 调用计数；本地闭环、断网也拦）----
-  freeQuotaEnabled: Schema.boolean().default(true).description('本地闭环免费额度闸门（按 LLM 调用计数）'),
-  freeLlmDailyLimit: Schema.number().default(20)
-    .description('每日免费 LLM 调用额度（按调用计数：一次推演 = decompose + conclude 共 2 次；离线推演不计数）'),
-  freeDailyLimit: Schema.number().default(10)
-    .description('（兼容别名，deprecated）v0.3.4 前「每日推演次数」口径；设置后等同 freeLlmDailyLimit'),
+  // ---- 免费额度本地闸门（v0.4.2：主节流改为「每分钟速率 + 队列等待」；每日硬上限降级为可选兜底）----
+  freeQuotaEnabled: Schema.boolean().default(true)
+    .description('本地闭环免费额度闸门（免费 LLM 节流总开关；false=运维/授权旁路，不限速不计数）'),
+  freeLlmPerMinute: Schema.number().default(10)
+    .description('免费 LLM 每分钟调用速率上限（滑动窗口 60s）；超出排队等待，不拒绝不降级。0=不限制'),
+  freeLlmDailyLimit: Schema.number().default(0)
+    .description('每日免费 LLM 硬上限（可选兜底，默认 0=关闭）；>0 时作为每日总闸，用尽降级离线模板'),
+  freeDailyLimit: Schema.number().default(0)
+    .description('（兼容别名，deprecated）设置后等同 freeLlmDailyLimit'),
 
   // ---- 合规：脱敏回传默认关 ----
   telemetryEnabled: Schema.boolean().default(false).description('脱敏回传默认关'),
@@ -75,7 +78,7 @@ export const Config = Schema.object({
 export async function apply(ctx, config) {
   // 0) DSH 会话当前模型注入（可选）：Runtime 可经 ctx.sessionModel / config.sessionModel 提供。
   //    注入后若用户未显式选其他厂商（provider 仍为缺省 deepseek/session），优先会话模型。
-  const sessionModel = config?.sessionModel || ctx?.sessionModel || null
+  const sessionModel = config?.sessionModel || null
   let cloudConfig = config
   if (sessionModel) {
     const provider = String(config?.cloudModelProvider || '').toLowerCase()
@@ -102,7 +105,7 @@ export async function apply(ctx, config) {
       `；自定义剧本回灌 ${loaded} 个` +
       `；云模型 ${cloud.active ? `已启用(${cloud.provider}/${cloud.model || '(默认)'})` : '未启用(离线模板)'}` +
       (customModels.length ? `；自定义模型 ${customModels.length} 个` : '') +
-      `；LLM 额度 ${quota.enabled ? `${quota.used}/${quota.limit} 次/天` : '闸门关闭'}`,
+      `；LLM 额度 ${quota.enabled ? `速率 ${quota.rate?.rateLimit === Infinity ? '不限' : quota.rate?.rateLimit + '次/分钟(排队)'}（每日上限 ${quota.limit > 0 ? quota.limit + '次' : '关闭'}）` : '闸门关闭'}`,
   )
 
   // 4) 注册工具

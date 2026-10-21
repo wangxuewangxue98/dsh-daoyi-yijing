@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.4.0
+  version: 0.4.2
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -59,9 +59,9 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
 - **DSH 会话当前模型（v0.3.4，可选）**：`cloudModelProvider='session'`（或
   `cloudModelUseSessionModel=true`）时使用 Runtime 注入的 `config.sessionModel`
   （函数或 `{baseUrl,model,apiKey}`）或 env `DAOYI_LLM_SESSION_*`；未注入则离线模板。
-- **免费额度闸门按 LLM 调用计数（v0.3.4）**：每次真实 LLM 外发计 1 次（一次推演 = 2 次），
-  默认 20 次/天（`freeLlmDailyLimit`），本地硬闸断网也拦；用尽后自动降级确定性模板
-  （verdict 不受影响），次日重置；`yijing_model_list` 可查额度快照（只读）。
+- **免费 LLM 节流（v0.4.2）**：主节流为**每分钟速率上限**（默认 10 次/60s 滑动窗口，`freeLlmPerMinute`），
+  超出进入 FIFO 队列**排队等待**，不拒绝不降级；每日硬上限 `freeLlmDailyLimit` 默认 0（关闭）作为可选兜底；
+  `freeQuotaEnabled:false` 为运维旁路；`yijing_model_list` 可查额度快照（只读）。
 - **离线/断网降级**：未配置或调用失败（401/超时/断网）时，L1→L7 返回结构化因数清单（剧本骨架），
   L1 文案走确定性模板（易经卦象头 + 八宫明细），推演结论依然成立、verdict 不受影响。
 

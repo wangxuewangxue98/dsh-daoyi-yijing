@@ -22,10 +22,11 @@
         cloudModelCustomModels: ''
         # ---- DSH 会话当前模型（可选；由 Runtime 注入 config.sessionModel，或 env DAOYI_LLM_SESSION_*）----
         cloudModelUseSessionModel: false
-        # ---- 每日免费额度闸门（按 LLM 调用计数：一次推演 = decompose + conclude = 2 次；离线推演不计数；本地为准，断网也拦）----
-        freeQuotaEnabled: true
-        freeLlmDailyLimit: 20
-        freeDailyLimit: 10                    # （兼容别名，deprecated）设置后等同 freeLlmDailyLimit
+        # ---- 免费额度闸门（v0.4.2：主节流=每分钟速率+排队等待；每日硬上限降级为可选兜底）----
+        freeQuotaEnabled: true                # 免费 LLM 节流总开关（false=运维/授权旁路，不限速不计数）
+        freeLlmPerMinute: 10                  # 免费 LLM 每分钟速率上限（滑动窗口60s）；超出排队等待，不拒绝不降级；0=不限制
+        freeLlmDailyLimit: 0                   # 每日硬上限（可选兜底，默认0=关闭）；>0 时作为每日总闸，用尽降级离线模板
+        freeDailyLimit: 0                      # （兼容别名，deprecated）设置后等同 freeLlmDailyLimit
         # ---- 合规：脱敏回传默认关 ----
         telemetryEnabled: false                # 默认关闭，绝不外发决策内容/参数/密钥
         knowledgeBaseUrl: ''                   # 在线知识库入口（可选）
