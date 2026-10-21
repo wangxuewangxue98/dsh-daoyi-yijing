@@ -15,14 +15,19 @@
 //   JB 基本面 / GZ 估值面 / HG 宏观面：截图无任何数据 → 全域 NA（覆盖率如实暴露，不造假）
 // 推演区间：本周内（截图为周三收盘快照 → 剩余周四/周五共 2 个交易日）。
 // 结论映射：可行→看涨 / 有条件可行→震荡(观望) / 不可行→看跌；FX/XX 白名单否决→看跌(否决)。
+// 在线模式（--live，v0.5.0）：经 adapters/quote.mjs 拉腾讯实时行情，激活 GZ01/JS01/JS04/JS08
+//   （PE 估值、收盘位置、量能配合、波动特征）并覆盖 JS02/ZJ01 基线口径；取数失败整体回退基线。
 // ⚠️ 免责声明：结构化多因子研判示意，不构成任何投资建议。
 
 import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpoints.mjs'
 import { evaluate } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript } from '../lib/yijing/hexagram.mjs'
+import { fetchSignalsForStocks, RULES_TEXT } from '../adapters/quote.mjs'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+export { STOCKS, buildInputs, mapTrend }
 
 const MARKET_PCT = 0.12 // 上证当日 +0.12%
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x))
@@ -89,25 +94,43 @@ const STOCKS = [
   ['夏厦精密', '001306', 57.15, 8.82, '装备制造', ''],
 ]
 
-// ===== 板块日均涨跌（由截图数据自身统计，非外部臆造）=====
-const sectorStats = {}
-for (const [, , , pct, sector] of STOCKS) (sectorStats[sector] ||= []).push(pct)
-const sectorAvg = Object.fromEntries(
-  Object.entries(sectorStats).map(([s, arr]) => [s, arr.reduce((a, b) => a + b, 0) / arr.length]),
-)
+// ===== 板块日均涨跌（由输入股票自身统计，非外部臆造）=====
+function sectorAvgOf(stocks) {
+  const stats = {}
+  for (const [, , , pct, sector] of stocks) (stats[sector] ||= []).push(pct)
+  return Object.fromEntries(
+    Object.entries(stats).map(([s, arr]) => [s, arr.reduce((a, b) => a + b, 0) / arr.length]),
+  )
+}
+const sectorAvg = sectorAvgOf(STOCKS)
 
 // ===== 子域级信号 → 检查点输入 + NA 标记 =====
 const SUB_IDX = { JS趋势: 0, JS动量: 1, ZJ主力: 0, HY景气: 0, XX公告: 0, FX系统: 0, FX黑天鹅: 1, FX止损: 7 }
-function buildInputs(stock) {
+
+/**
+ * 合并基线信号与在线适配信号：同 (code, subIdx) 以适配信号为准（口径覆盖），其余追加。
+ * 返回合并后的 signals 数组（供 buildInputs 使用）。
+ */
+export function mergeSignals(baseline, adapter) {
+  const out = baseline.map((s) => ({ ...s }))
+  for (const a of adapter || []) {
+    const i = out.findIndex((s) => s.code === a.code && s.subIdx === a.subIdx)
+    if (i >= 0) out[i] = { ...a }
+    else out.push({ ...a })
+  }
+  return out
+}
+
+function buildInputs(stock, extraSignals = [], secAvg = sectorAvg) {
   const [, , , pct, sector, flag] = stock
   const rel = pct - MARKET_PCT
   // 每个活跃子域：base = 0.5 + delta；6 侧面按系数铺开
-  const signals = []
-  const add = (code, subIdx, delta) => signals.push({ code, subIdx, delta })
+  const base = []
+  const add = (code, subIdx, delta) => base.push({ code, subIdx, delta })
   add('JS', SUB_IDX.JS趋势, clamp(rel * 0.12, -0.42, 0.42))
   add('JS', SUB_IDX.JS动量, clamp(pct * 0.1, -0.42, 0.42))
   add('ZJ', SUB_IDX.ZJ主力, clamp(pct * 0.1, -0.42, 0.42))
-  add('HY', SUB_IDX.HY景气, clamp(sectorAvg[sector] * 0.06, -0.2, 0.2))
+  add('HY', SUB_IDX.HY景气, clamp((secAvg[sector] ?? 0) * 0.06, -0.2, 0.2))
   if (flag === 'ST') {
     add('XX', SUB_IDX.XX公告, -0.25)
     add('FX', SUB_IDX.FX系统, 0.05)
@@ -116,12 +139,13 @@ function buildInputs(stock) {
     add('XX', SUB_IDX.XX公告, 0.05)
   }
   if (pct <= -4.5) {
-    if (!signals.some((s) => s.code === 'FX' && s.subIdx === SUB_IDX.FX系统)) add('FX', SUB_IDX.FX系统, 0.05)
+    if (!base.some((s) => s.code === 'FX' && s.subIdx === SUB_IDX.FX系统)) add('FX', SUB_IDX.FX系统, 0.05)
     add('FX', SUB_IDX.FX止损, -0.1)
   } else if (pct >= 4.5) {
-    if (!signals.some((s) => s.code === 'FX' && s.subIdx === SUB_IDX.FX系统)) add('FX', SUB_IDX.FX系统, 0.05)
+    if (!base.some((s) => s.code === 'FX' && s.subIdx === SUB_IDX.FX系统)) add('FX', SUB_IDX.FX系统, 0.05)
     add('FX', SUB_IDX.FX止损, 0.2)
   }
+  const signals = mergeSignals(base, extraSignals)
 
   const activeKeys = new Set(signals.map((s) => `${s.code}${String(s.subIdx + 1).padStart(2, '0')}`))
   const inputs = {}
@@ -152,8 +176,11 @@ function mapTrend(r) {
   return '看跌'
 }
 
-function assess(stock, r, activeDomainCount, coverage) {
+function assess(stock, r, activeDomains, coverage) {
   const [, , , , , flag] = stock
+  const allDomains = script.domains.map((d) => d.code)
+  const naDomains = allDomains.filter((c) => !activeDomains.includes(c))
+  const activeDomainCount = activeDomains.length
   const margin = Math.min(Math.abs(r.overall_score - 0.75), Math.abs(r.overall_score - 0.5))
   const conf =
     margin <= 0.03
@@ -162,91 +189,134 @@ function assess(stock, r, activeDomainCount, coverage) {
         ? '中低（距档位边界较近）'
         : '中（距档位边界较远，档位相对稳定）'
   const notes = [
-    `输入完备度：低——仅 ${activeDomainCount}/8 个域有数据支撑的信号（JS/ZJ 来自当日行情，HY 为板块当日均值代理，XX/FX 仅 ST·XD·大涨大跌情形激活）；` +
-      `JB/GZ/HG 无数据 → 全域 NA（覆盖率 ${(coverage * 100).toFixed(1)}%），384 爻框架下如实暴露信息缺口而非造假填充。`,
+    `输入完备度：${activeDomainCount}/8 个域有数据支撑的信号（JS/ZJ 来自当日行情，HY 为板块当日均值代理，XX/FX 仅 ST·XD·大涨大跌情形激活，GZ 仅在线模式激活）；` +
+      `${naDomains.length ? `无数据域 ${naDomains.join('/')} → 全域 NA` : '全部域均有数据支撑'}（覆盖率 ${(coverage * 100).toFixed(1)}%），384 爻框架下如实暴露信息缺口而非造假填充。`,
     `结论置信：${conf}` +
       (r.has_veto
         ? `；触发 FX/XX 白名单否决（${flag === 'ST' ? 'ST 风险警示' : '当日深跌风险暴露'}），档位由风控规则主导，对输入鲁棒。`
         : `；无否决，档位由 ${activeDomainCount} 个活跃域的通过率均值决定。`),
-    `可复核性：全部输入由截图涨跌幅按公开规则线性映射，无隐藏参数；确定性引擎（离线、零 LLM 消耗），同一输入必得同一结论，可用下周末行情回看校验。`,
+    `可复核性：全部输入由行情涨跌幅按公开规则线性映射（在线模式另含腾讯 PE/振幅/换手规则，见 RULES_TEXT），无隐藏参数；确定性引擎（零 LLM 消耗），同一输入必得同一结论，可用下周末行情回看校验。`,
   ]
   return { margin: Number(margin.toFixed(4)), notes }
 }
 
-const results = []
-for (const stock of STOCKS) {
-  const [name, code, price, pct, sector, flag] = stock
-  const { inputs, naIds, signals } = buildInputs(stock)
-  const s = buildStockScript()
-  s.na = { domains: [], checkpoints: naIds }
-  const matter = `${name}(${code}) 本周内涨跌研判`
-  const r = await evaluate(matter, s, { inputs })
+// ===== 批量推演（可测试化：默认离线；live=true 走在线适配层，失败整体回退基线）=====
+export async function runBatch(opts = {}) {
+  const live = Boolean(opts.live)
+  const stocks = opts.stocks || STOCKS
+  const outFile = opts.outFile || join(LOG_DIR, live ? 'stock-batch-results-live.json' : 'stock-batch-results.json')
 
-  // 卦象：8 宫分 = 实际聚合分（NA 宫取 0.5 中性），保持 64 卦层可用
-  const scores8 = {}
-  for (const d of s.domains) {
-    scores8[d.code] = r.domain_results[d.code]?.score ?? 0.5
+  // 在线模式：批量拉行情 → 每只信号；失败/缺只 → 回退基线（NA），不影响其余股票
+  let signalsByCode = new Map()
+  let liveMeta = { mode: 'offline', fetched: 0, error: null, rules: [] }
+  if (live) {
+    const res = await fetchSignalsForStocks(stocks, {
+      fetcher: opts.fetcher,
+      sectorIndexMap: opts.sectorIndexMap,
+    })
+    signalsByCode = res.signalsByCode
+    liveMeta = {
+      mode: 'online',
+      fetched: res.fetched,
+      error: res.error,
+      rules: RULES_TEXT,
+      degraded_to_baseline: res.fetched < stocks.length,
+    }
+    console.log(
+      `[live] 腾讯行情拉取 ${res.fetched}/${stocks.length} 只` +
+        (res.error ? `（异常：${res.error}，缺失只回退基线）` : '') +
+        (res.fetched < stocks.length ? `（${stocks.length - res.fetched} 只回退基线）` : ''),
+    )
   }
-  const hx = resolveHexagramForScript(scores8, s)
 
-  const activeDomains = [...new Set(signals.map((x) => x.code))]
-  const a = assess(stock, r, activeDomains.length, r.coverage.coverage)
-  results.push({
-    name, code, price, pct, sector, flag,
-    sector_avg: Number(sectorAvg[sector].toFixed(2)),
-    signals: signals.map((x) => ({ domain: x.code, sub: x.subIdx + 1, delta: Number(x.delta.toFixed(4)) })),
-    active_domains: activeDomains,
-    domain_scores: Object.fromEntries(Object.entries(scores8).map(([k, v]) => [k, Number(v.toFixed(4))])),
-    verdict: r.verdict,
-    trend: mapTrend(r),
-    has_veto: r.has_veto,
-    veto_reason: r.has_veto ? (flag === 'ST' ? 'ST 风险警示 → FX/XX 白名单强关联失守' : '当日深跌风险暴露 → FX 白名单强关联失守') : null,
-    risk_level: r.risk_level,
-    overall_score: r.overall_score,
-    yang_ratio: r.yang_ratio,
-    coverage: r.coverage,
-    sancai: r.sancai,
-    hexagram: {
-      name: hx.name,
-      desc: hx.desc,
-      yaos: hx.yaos.join(''),
-      moving_yao: hx.movingYao.yaoIndex >= 0 ? hx.movingYao.yaoIndex + 1 : null,
-      changed: hx.changed ? hx.changed.name : null,
+  const results = []
+  const secAvg = stocks === STOCKS ? sectorAvg : sectorAvgOf(stocks)
+  for (const stock of stocks) {
+    const [name, code, price, pct, sector, flag] = stock
+    const extra = signalsByCode.get(String(code).replace(/\D/g, '')) || []
+    const { inputs, naIds, signals } = buildInputs(stock, extra, secAvg)
+    const s = buildStockScript()
+    s.na = { domains: [], checkpoints: naIds }
+    const matter = `${name}(${code}) 本周内涨跌研判`
+    const r = await evaluate(matter, s, { inputs })
+
+    // 卦象：8 宫分 = 实际聚合分（NA 宫取 0.5 中性），保持 64 卦层可用
+    const scores8 = {}
+    for (const d of s.domains) {
+      scores8[d.code] = r.domain_results[d.code]?.score ?? 0.5
+    }
+    const hx = resolveHexagramForScript(scores8, s)
+
+    const activeDomains = [...new Set(signals.map((x) => x.code))]
+    const a = assess(stock, r, activeDomains, r.coverage.coverage)
+    results.push({
+      name, code, price, pct, sector, flag,
+      sector_avg: Number(sectorAvg[sector].toFixed(2)),
+      signals: signals.map((x) => ({ domain: x.code, sub: x.subIdx + 1, delta: Number(x.delta.toFixed(4)), rule: x.rule || null })),
+      active_domains: activeDomains,
+      domain_scores: Object.fromEntries(Object.entries(scores8).map(([k, v]) => [k, Number(v.toFixed(4))])),
+      verdict: r.verdict,
+      trend: mapTrend(r),
+      has_veto: r.has_veto,
+      veto_reason: r.has_veto ? (flag === 'ST' ? 'ST 风险警示 → FX/XX 白名单强关联失守' : '当日深跌风险暴露 → FX 白名单强关联失守') : null,
+      risk_level: r.risk_level,
+      overall_score: r.overall_score,
+      yang_ratio: r.yang_ratio,
+      coverage: r.coverage,
+      sancai: r.sancai,
+      hexagram: {
+        name: hx.name,
+        desc: hx.desc,
+        yaos: hx.yaos.join(''),
+        moving_yao: hx.movingYao.yaoIndex >= 0 ? hx.movingYao.yaoIndex + 1 : null,
+        changed: hx.changed ? hx.changed.name : null,
+      },
+      taiji_line: (r.conclusion_text || '').split('\n').find((l) => l.startsWith('【太极】')) || null,
+      assess: a,
+    })
+  }
+
+  // ===== 汇总输出 =====
+  const dist = {}
+  for (const r of results) dist[r.trend] = (dist[r.trend] || 0) + 1
+  const hxDist = {}
+  for (const r of results) hxDist[r.hexagram.name] = (hxDist[r.hexagram.name] || 0) + 1
+
+  const out = {
+    meta: {
+      generated_at: new Date().toISOString(),
+      snapshot: '同花顺自选股截图（收盘快照，周三 21:50）',
+      market: { 上证: '+0.12%', 深成: '-0.14%', 创业板: '-0.26%' },
+      horizon: '本周内（剩余周四/周五共 2 个交易日）',
+      script: script.script_id,
+      engine: `dsh-daoyi-yijing v0.5.0（确定性引擎${live ? '，在线模式：腾讯行情适配层' : '，离线模式'}，零 LLM 额度消耗）`,
+      mode: liveMeta.mode,
+      live: live ? liveMeta : null,
+      rules: '见脚本头注释' + (live ? '与 adapters/quote.mjs RULES_TEXT' : '') + '；无数据域一律 NA，不造假填充',
+      count: results.length,
+      disclaimer: '结构化多因子研判示意，不构成任何投资建议',
     },
-    taiji_line: (r.conclusion_text || '').split('\n').find((l) => l.startsWith('【太极】')) || null,
-    assess: a,
+    sector_avg: Object.fromEntries(Object.entries(sectorAvg).map(([k, v]) => [k, Number(v.toFixed(2))])),
+    trend_dist: dist,
+    hexagram_dist: hxDist,
+    results,
+  }
+
+  mkdirSync(LOG_DIR, { recursive: true })
+  writeFileSync(outFile, JSON.stringify(out, null, 2), 'utf8')
+  console.log(`共推演 ${results.length} 只 · 趋势分布:`, dist)
+  console.log(`卦象种类: ${Object.keys(hxDist).length} 种 →`, hxDist)
+  console.log('结果已写入', outFile)
+  return out
+}
+
+const LOG_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'logs')
+
+// 直接运行（node scripts/divine_batch_stocks.mjs [--live]）才执行；被 import 时不跑
+if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('divine_batch_stocks.mjs')) {
+  const live = process.argv.includes('--live')
+  runBatch({ live }).catch((e) => {
+    console.error('批推演失败:', e)
+    process.exit(1)
   })
 }
-
-// ===== 汇总输出 =====
-const dist = {}
-for (const r of results) dist[r.trend] = (dist[r.trend] || 0) + 1
-const hxDist = {}
-for (const r of results) hxDist[r.hexagram.name] = (hxDist[r.hexagram.name] || 0) + 1
-
-const out = {
-  meta: {
-    generated_at: new Date().toISOString(),
-    snapshot: '同花顺自选股截图（收盘快照，周三 21:50）',
-    market: { 上证: '+0.12%', 深成: '-0.14%', 创业板: '-0.26%' },
-    horizon: '本周内（剩余周四/周五共 2 个交易日）',
-    script: script.script_id,
-    engine: 'dsh-daoyi-yijing v0.4.0（确定性离线引擎，零 LLM 额度消耗）',
-    rules: '见脚本头注释；无数据域一律 NA，不造假填充',
-    count: results.length,
-    disclaimer: '结构化多因子研判示意，不构成任何投资建议',
-  },
-  sector_avg: Object.fromEntries(Object.entries(sectorAvg).map(([k, v]) => [k, Number(v.toFixed(2))])),
-  trend_dist: dist,
-  hexagram_dist: hxDist,
-  results,
-}
-
-const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'logs')
-mkdirSync(OUT, { recursive: true })
-const file = join(OUT, 'stock-batch-results.json')
-writeFileSync(file, JSON.stringify(out, null, 2), 'utf8')
-
-console.log(`共推演 ${results.length} 只 · 趋势分布:`, dist)
-console.log(`卦象种类: ${Object.keys(hxDist).length} 种 →`, hxDist)
-console.log('结果已写入', file)

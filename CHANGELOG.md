@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 0.5.0 (2026-10-21)
+### 补全 64 卦判词 + 可选在线模式（行情适配层）
+- **补全 64 卦判词**（新模块 `lib/yijing/hexagram-texts.mjs`）：
+  - 旧版离线判词只有 `VERDICT_DESC` 三选一（可行/有条件可行/不可行）+ `HEX_DESC` 15 条，64 卦共用同一组描述（用户侧表现为「卦的判词只有两种」）。
+  - 现在全部 **64 卦各有独立判词**（卦辞要义 `judgment` + 行事建议 `advice` + 卦性 `tone`），离线结论文案头部改为「卦名：判词（建议）——本卦判：verdict」；动爻变卦行带变卦判词。
+  - `reviewer.generateConclusionText` 与 `hexagram.resolveHexagram.desc` 均切换到判词库；`HEX_DESC` 降级为兼容回退。
+  - 测试 `scripts/test_hexagram_texts.mjs`（19 断言）：判词表与 HEXAGRAMS 双射一致、64 判词互异、离线文案 64 卦逐卦唯一（证明「只有两种」已修复）。
+- **新增可选在线模式**（新模块 `adapters/quote.mjs`，产品化原型结论）：
+  - 数据源：腾讯财经 `qt.gtimg.cn`（批量单请求、免费、无需鉴权；URL 用 sh/sz/bj 市场前缀符号，字段 `~` 分隔）。
+  - 透明归一化规则（`RULES_TEXT` 导出，可审计）：GZ01 绝对估值（PE 分段锚定，便宜→阳/贵→阴，亏损→NA）、JS01 趋势方向（收盘位置居中化）、JS02 动量强度（同基线）、JS04 量能配合（换手分档×当日方向，弱信号）、JS08 波动特征（振幅分档）、ZJ01 主力资金（沿用基线代理口径，局限已声明）；JB/HG 无字段→NA。
+  - **断网/超时/字段缺失 → 对应信号回退 NA，绝不污染离线核心**；整体取数失败 → 调用方整体回退基线（`test_quote_adapter.mjs` 验证回退后趋势与离线逐只一致）。
+  - fetcher 可注入（测试/代理环境）；默认全局 fetch；`createCurlFetcher({proxy})` 供代理环境（undici 不读代理变量）。
+- **批处理脚本 `--live`**（`scripts/divine_batch_stocks.mjs`）：
+  - 重构为可测试的 `runBatch({live, fetcher, stocks, outFile})`；`--live` 走适配层，输出 `logs/stock-batch-results-live.json`；默认离线路径行为不变（56 只回归 16/19/16/5、5 种卦，测试断言保护）。
+  - 实测（2026-10-21 腾讯真实行情 56/56 拉取）：卦象种类 **5 → 8**（新增天泽履 11 / 火天大有 4 / 天地否 3 / 離为火 1），GZ 域 **37/56 激活**（其余 PE 缺失/亏损诚实 NA），平均覆盖率 6.8% → 11.2%。
+- **质量门**：新增 2 套专项测试共 77 断言（判词 19 + 适配层 58）；全门 verify 23 + hexagram 13 + verdict 5 + rate_limit 21 + quota selftest 51 + 判词 19 + 适配层 58 = **190 断言全 PASS**。
+- **修复**（由新测试抓出）：
+  - `buildTencentUrl` 原用 secid（`1.601398`）格式，gtimg 实际只认市场前缀符号（`sh601398`）→ 全部 `none_match`；改为 `symbolOf()`。
+  - `parseTencentQuote` 原按逗号分隔，gtimg 真实响应为 `~` 分隔 → 全部解析失败；改为 `/[~,]/` 兼容。
+  - `fetchSignalsForStocks` 原按 `s.code` 取码，但批处理股票是位置数组（`s[1]`）→ 取出空码列表；改为兼容两种形态。
+  - 一字线（最高=最低）`closePosition` 原为 null（误判 NA），改为中性 0.5。
+
 ## 0.4.2 (2026-10-21)
 ### 免费 LLM 节流改为「每分钟速率 + 队列等待」（v0.4.1 补充）
 - **需求**：免费 LLM 调用限制改为 **10 次/分钟**；超出不拒绝、不降级，**排队等待**空位。
