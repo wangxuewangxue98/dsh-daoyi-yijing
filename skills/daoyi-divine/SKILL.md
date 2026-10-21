@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.3.5
+  version: 0.4.0
 user-invocable: true
 disable-model-invocation: false
 ---

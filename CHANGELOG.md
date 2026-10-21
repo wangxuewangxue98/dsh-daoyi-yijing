@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 0.4.0 (2026-10-21)
+### P0（breaking）：修复「64 卦仅坍缩为乾为天/地水师两卦」
+- **现象**：推演结果几乎恒为乾为天或地水师，64 卦框架退化成二元查表，「水山蹇（有条件可行）」结构不可达。
+- **根因（对照 v0.3.5 现行代码实证）**：
+  1. 卦象由 `verdict` **三元查表**生成（`reviewer.mjs` 旧 `head` 逻辑），与 64 卦/阴阳无关，最多 3 态；
+  2. `overall_score` 用阳爻占比 `gs/gw`（`aggregator.mjs`），一维标量丢 8 宫分布；
+  3. `verdict` 二值坍缩：`hasVeto` 一票否决 + 阈值 0.75，中间带 0.5~0.75 难以触达；
+  4. 阴阳布尔硬切 `threshold≥0.5→阳`（`mapping.mjs`），梯度消失；
+  5. 否决点泛滥：每子域首项 `ci===0` 皆强关联，8×8=**64 个**强否决点，任一失败全盘翻成地水师。
+- **修复**：
+  - 新增 `lib/yijing/hexagram.mjs`：**真·64 卦动态映射**。取 6 主域（下3+上3）按 `score≥0.5→阳` 组 6 爻，用「上卦+下卦」组合查《周易》64 卦标准表（非二进制序，规避歧义），含全阳→乾为天、全阴→坤为地断言；动爻取 6 爻内与 0.5 距离最显著一爻翻转得变卦。
+  - `reviewer.mjs`：卦象改为 `resolveHexagram(domain_scores, script 域顺序)` 动态生成，保留 `verdict` 语义解读与动爻变卦注记。
+  - `aggregator.mjs`：引入**连续分 verdict**（阈值 `PASS_THRESHOLD=0.65` / `COND_THRESHOLD=0.50`，基于 8 宫连续均分 `avg`）复活「有条件可行」；`overall_score` 改连续分（保留 `yang_ratio` 审计）。
+  - `checkpoints.mjs`：新增**否决策略** `veto: {mode:'any'|'whiteList', whiteList:[域], minCount:N}`；`stock-trend`/`commercial` 设 `whiteList`（风险/合规域）且 `minCount:2`，`motor-design`/`demo-384` 保持 `any` 不变（向下兼容）。
+- **测试**：新增 `scripts/test_hexagram.mjs`（全阳→乾为天、全阴→坤为地、组合命中、动爻变卦）与 `scripts/test_verdict_continuity.mjs`（否决收窄 + 中间态复活 + 卦象多样性，实测 8 种卦象）。端到端 5 种输入得 5 种不同卦象（乾为天/坤为地/天雷无妄/天泽履/山天大畜）。
+- **Breaking**：`verdict`/`overall_score` 语义与卦象生成方式变更，次版本 bumps 0.3.5→0.4.0；`evaluate` 输出 `hexagram_info` 结构新增 `changing_yao` 字段。
+
 ## 0.3.5 (2026-10-21)
 ### P0 修复：`dsh.bundle.patch` 字段形态导致安装失败
 - **现象**：`dsh plugin add dsh-daoyi-yijing` 安装失败，报

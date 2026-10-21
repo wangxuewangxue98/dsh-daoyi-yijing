@@ -21,7 +21,7 @@ function readPluginVersion() {
 }
 const PLUGIN_VERSION = readPluginVersion()
 
-export const inject = ['tools']
+export const inject = ['tools', 'sessionModel?']
 
 export const Config = Schema.object({
   // ---- 剧本 ----
