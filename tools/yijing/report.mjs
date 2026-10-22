@@ -25,7 +25,16 @@ export const TOOL_PARAMS = {
 
 function formatReport(result) {
   const lines = []
-  lines.push('【太极结论】' + result.verdict + ' / 风险 ' + result.risk_level + ' / 综合分 ' + result.overall_score)
+  lines.push(
+    '【太极结论】' +
+      result.verdict +
+      (result.verdict_grade && result.verdict_grade !== result.verdict ? `（${result.verdict_grade}）` : '') +
+      ' / 风险 ' +
+      result.risk_level +
+      ' / 综合分 ' +
+      result.overall_score +
+      (typeof result.verdict_margin === 'number' ? `（距上一条通过线 ${result.verdict_margin >= 0 ? '+' : ''}${result.verdict_margin}）` : ''),
+  )
   lines.push('【六十四卦】' + Object.keys(result.subdomain_results).length + ' 子领域')
   lines.push('【八宫汇总】')
   for (const d of Object.values(result.domain_results)) {

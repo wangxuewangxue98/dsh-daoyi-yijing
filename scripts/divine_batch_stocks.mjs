@@ -20,15 +20,30 @@
 // ⚠️ 免责声明：结构化多因子研判示意，不构成任何投资建议。
 
 import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpoints.mjs'
+import { buildStockTrendV2Script } from '../lib/yijing/scripts/stock-trend-v2.mjs'
 import { evaluate } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript, quantileThresholds } from '../lib/yijing/hexagram.mjs'
 import { fetchSignalsForStocks, RULES_TEXT } from '../adapters/quote.mjs'
-import { signalsToInputs } from '../adapters/stock-inputs.mjs'
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { signalsToInputs, signalsToInputsV2 } from '../adapters/stock-inputs.mjs'
+import { FINE_MAP } from '../lib/yijing/subdomain-fine-map.mjs'
+import { loadBaselines, stratumMetaOf } from '../lib/yijing/baselines.mjs'
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export { STOCKS, buildInputs, mapTrend }
+
+// 引擎版本（v0.9.0 F-2/E-8）：动态读 package.json，杜绝 meta 里写死「v0.5.0」的陈旧版本串
+const ENGINE_VERSION = (() => {
+  try {
+    return (
+      JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8'))
+        .version || ''
+    )
+  } catch {
+    return ''
+  }
+})()
 
 const MARKET_PCT = 0.12 // 上证当日 +0.12%
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x))
@@ -122,7 +137,9 @@ export function mergeSignals(baseline, adapter) {
   return out
 }
 
-function buildInputs(stock, extraSignals = [], secAvg = sectorAvg) {
+function buildInputs(stock, extraSignals = [], secAvg = sectorAvg, ctx = {}) {
+  const scriptObj = ctx.script || script
+  const dbObj = ctx.db || db
   const [, , , pct, sector, flag] = stock
   const rel = pct - MARKET_PCT
   // 每个活跃子域：base = 0.5 + delta；6 侧面按系数铺开
@@ -151,10 +168,22 @@ function buildInputs(stock, extraSignals = [], secAvg = sectorAvg) {
   // v0.6.1：铺开口径统一走 adapters/stock-inputs.mjs（此前本文件内重复实现同一套
   // ASPECT_COEFS/BIAS 循环，两处漂移会导致基线分位数与对话单只调用不可比）。
   // 离线 base 信号仍在本文件生成（CSV 行的 pct/sector/flag → 合成信号）。
-  return { signals, ...signalsToInputs(signals, db) }
+  // v0.9.0 F-7：1296 剧本下 384 形态信号经迁移映射填 36 分域（默认 P2 精映射；fineMap=false 回落 L2）。
+  if (ctx.isV2) {
+    const migrationMap = scriptObj.migrated_from ? scriptObj.migrated_from.mapping : {}
+    return {
+      signals,
+      ...signalsToInputsV2(signals, dbObj, migrationMap, ctx.fineMap === false ? null : FINE_MAP),
+    }
+  }
+  return { signals, ...signalsToInputs(signals, dbObj) }
 }
 
 // ===== 批量推演 =====
+// v0.9.0 F-7：按 id 取剧本（支持 1296 的 stock-trend-v2；缺省 384，行为逐位不变）
+export function buildScriptById(scriptId = 'stock-trend') {
+  return String(scriptId) === 'stock-trend-v2' ? buildStockTrendV2Script() : buildStockScript()
+}
 const script = buildStockScript()
 const db = buildCheckpointDatabase(script)
 
@@ -165,11 +194,14 @@ function mapTrend(r) {
   return '看跌'
 }
 
-function assess(stock, r, activeDomains, coverage) {
+function assess(stock, r, activeDomains, coverage, ctx = {}) {
   const [, , , , , flag] = stock
-  const allDomains = script.domains.map((d) => d.code)
+  const scriptObj = ctx.script || script
+  const allDomains = scriptObj.domains.map((d) => d.code)
+  const totalDomains = allDomains.length
   const naDomains = allDomains.filter((c) => !activeDomains.includes(c))
   const activeDomainCount = activeDomains.length
+  const checksLabel = ctx.isV2 ? '1296 爻' : '384 爻'
   const margin = Math.min(Math.abs(r.overall_score - 0.75), Math.abs(r.overall_score - 0.5))
   const conf =
     margin <= 0.03
@@ -178,8 +210,8 @@ function assess(stock, r, activeDomains, coverage) {
         ? '中低（距档位边界较近）'
         : '中（距档位边界较远，档位相对稳定）'
   const notes = [
-    `输入完备度：${activeDomainCount}/8 个域有数据支撑的信号（JS/ZJ 来自当日行情，HY 为板块当日均值代理，XX/FX 仅 ST·XD·大涨大跌情形激活，GZ 仅在线模式激活）；` +
-      `${naDomains.length ? `无数据域 ${naDomains.join('/')} → 全域 NA` : '全部域均有数据支撑'}（覆盖率 ${(coverage * 100).toFixed(1)}%），384 爻框架下如实暴露信息缺口而非造假填充。`,
+    `输入完备度：${activeDomainCount}/${totalDomains} 个域有数据支撑的信号（JS/ZJ 来自当日行情，HY 为板块当日均值代理，XX/FX 仅 ST·XD·大涨大跌情形激活，GZ 仅在线模式激活）；` +
+      `${naDomains.length ? `无数据域 ${naDomains.join('/')} → 全域 NA` : '全部域均有数据支撑'}（覆盖率 ${(coverage * 100).toFixed(1)}%），${checksLabel}框架下如实暴露信息缺口而非造假填充。`,
     `结论置信：${conf}` +
       (r.has_veto
         ? `；触发 FX/XX 白名单否决（${flag === 'ST' ? 'ST 风险警示' : '当日深跌风险暴露'}），档位由风控规则主导，对输入鲁棒。`
@@ -189,14 +221,39 @@ function assess(stock, r, activeDomains, coverage) {
   return { margin: Number(margin.toFixed(4)), notes }
 }
 
+// 四连卦紧凑化（v0.9.0 F-2）：引擎 evaluate 已原生产出四连卦，batch 此前完全丢弃（报告 E-5：0/56）。
+// 只保留可审计的最小集（爻序/阈值基准/四卦名+阳数+tone/一致性），不落 6×4 组明细（避免 JSON 膨胀）。
+function compactQuadForBatch(quad) {
+  if (!quad || !quad.hexes) return null
+  const hexes = {}
+  for (const [k, h] of Object.entries(quad.hexes)) {
+    hexes[k] = { label: h.label, name: h.name, yang: h.yang, tone: h.tone, degraded: Boolean(h.degraded) }
+  }
+  return {
+    structure: quad.structure || null,
+    hexes,
+    consistency: quad.consistency || null,
+  }
+}
+
 // ===== 批量推演（可测试化：默认离线；live=true 走在线适配层，失败整体回退基线）=====
 export async function runBatch(opts = {}) {
   const live = Boolean(opts.live)
   const stocks = opts.stocks || STOCKS
   const outFile = opts.outFile || join(LOG_DIR, live ? 'stock-batch-results-live.json' : 'stock-batch-results.json')
 
+  // v0.9.0 F-7：剧本可选（默认 384；stock-trend-v2 = 1296 四层）
+  const scriptId = String(opts.script || 'stock-trend')
+  const isV2 = scriptId === 'stock-trend-v2'
+  const scriptObj = buildScriptById(scriptId)
+  const dbObj = buildCheckpointDatabase(scriptObj)
+  const ctx = { script: scriptObj, db: dbObj, isV2, fineMap: opts.fineMap !== false }
+  // v0.9.0 F-2：分层审计（引擎已算四连卦，成本为零；分层需真实行情的总市值/涨跌）
+  const baselines = loadBaselines(scriptId)
+
   // 在线模式：批量拉行情 → 每只信号；失败/缺只 → 回退基线（NA），不影响其余股票
   let signalsByCode = new Map()
+  let quotesByCode = new Map()
   let liveMeta = { mode: 'offline', fetched: 0, error: null, rules: [] }
   if (live) {
     const res = await fetchSignalsForStocks(stocks, {
@@ -204,6 +261,7 @@ export async function runBatch(opts = {}) {
       sectorIndexMap: opts.sectorIndexMap,
     })
     signalsByCode = res.signalsByCode
+    quotesByCode = res.quotes || new Map()
     liveMeta = {
       mode: 'online',
       fetched: res.fetched,
@@ -224,18 +282,29 @@ export async function runBatch(opts = {}) {
   for (const stock of stocks) {
     const [name, code, price, pct, sector, flag] = stock
     const extra = signalsByCode.get(String(code).replace(/\D/g, '')) || []
-    const { inputs, naIds, signals } = buildInputs(stock, extra, secAvg)
-    const s = buildStockScript()
+    const { inputs, naIds, signals } = buildInputs(stock, extra, secAvg, ctx)
+    const s = isV2 ? buildStockTrendV2Script() : buildStockScript()
     s.na = { domains: [], checkpoints: naIds }
     const matter = `${name}(${code}) 本周内涨跌研判`
-    const r = await evaluate(matter, s, { inputs })
+    // v0.9.0：四连卦由引擎原生产出（阈值基准/卦③分组/强关联覆盖可配），batch 只做透出
+    const r = await evaluate(matter, s, {
+      inputs,
+      thresholdBasis: opts.thresholdBasis === 'absolute' ? 'absolute' : 'baseline',
+      ciGrouping: opts.ciGrouping,
+      strongOverride: opts.strongOverride === 'include-proxies' ? 'include-proxies' : undefined,
+    })
+    // 分层审计：live 有真实行情（总市值/涨跌）才分层；离线快照无市值 → 诚实标注不可用
+    const q = quotesByCode.get(String(code).replace(/\D/g, ''))
+    const stratumMeta = q
+      ? stratumMetaOf(baselines, q)
+      : { stratum: null, n: 0, used: false, reason: 'unavailable:snapshot-no-cap' }
 
     // 8 宫分 = 实际聚合分（NA 宫取 0.5 中性），保持 64 卦层可用
     const scores8 = {}
     for (const d of s.domains) {
       scores8[d.code] = r.domain_results[d.code]?.score ?? 0.5
     }
-    pending.push({ stock, name, code, price, pct, sector, flag, r, s, signals, scores8, activeDomains: [...new Set(signals.map((x) => x.code))] })
+    pending.push({ stock, name, code, price, pct, sector, flag, r, s, signals, scores8, stratumMeta, activeDomains: [...new Set(signals.map((x) => x.code))] })
   }
 
   // ---- 阶段 2：批次分位数阈值（满熵编码）——每个"进卦域"在本批次内阴阳各半；
@@ -245,9 +314,9 @@ export async function runBatch(opts = {}) {
   // ---- 阶段 3：逐只定卦象 ----
   const results = []
   for (const p of pending) {
-    const { stock, r, s, signals, scores8, activeDomains, name, code, price, pct, sector, flag } = p
+    const { stock, r, s, signals, scores8, activeDomains, name, code, price, pct, sector, flag, stratumMeta } = p
     const hx = resolveHexagramForScript(scores8, s, qt.thresholds)
-    const a = assess(stock, r, activeDomains, r.coverage.coverage)
+    const a = assess(stock, r, activeDomains, r.coverage.coverage, ctx)
     results.push({
       name: p.name, code: p.code, price: p.price, pct: p.pct, sector: p.sector, flag: p.flag,
       sector_avg: Number((secAvg[sector] ?? 0).toFixed(2)),
@@ -255,14 +324,23 @@ export async function runBatch(opts = {}) {
       active_domains: activeDomains,
       domain_scores: Object.fromEntries(Object.entries(scores8).map(([k, v]) => [k, Number(v.toFixed(4))])),
       verdict: r.verdict,
+      verdict_grade: r.verdict_grade || r.verdict,
+      verdict_margin: r.verdict_margin,
       trend: mapTrend(r),
       has_veto: r.has_veto,
+      veto_score_conflict: r.veto_score_conflict === true, // 否决骑墙（veto 但综合分≥0.5）→ 人工复核优先
       veto_reason: r.has_veto ? (flag === 'ST' ? 'ST 风险警示 → FX/XX 白名单强关联失守' : '当日深跌风险暴露 → FX 白名单强关联失守') : null,
       risk_level: r.risk_level,
       overall_score: r.overall_score,
       yang_ratio: r.yang_ratio,
       coverage: r.coverage,
       sancai: r.sancai,
+      // v0.9.0 F-2：四连卦（引擎已算，成本为零）+ 分层审计字段
+      quad_hexagram: compactQuadForBatch(r.quad_hexagram),
+      stratum: stratumMeta ? stratumMeta.stratum : null,
+      stratum_used: stratumMeta ? stratumMeta.used : false,
+      stratum_n: stratumMeta ? stratumMeta.n : 0,
+      stratum_reason: stratumMeta ? stratumMeta.reason : null,
       hexagram: {
         name: hx.name,
         desc: hx.desc,
@@ -280,15 +358,36 @@ export async function runBatch(opts = {}) {
   for (const r of results) dist[r.trend] = (dist[r.trend] || 0) + 1
   const hxDist = {}
   for (const r of results) hxDist[r.hexagram.name] = (hxDist[r.hexagram.name] || 0) + 1
+  // v0.9.0 F-2：四卦种类分布（①②③④ 各卦名的去重计数）+ 否决骑墙率
+  const quadDist = { hex_di: {}, hex_si: {}, hex_ci: {}, hex_xi: {} }
+  let quadCount = 0
+  for (const r of results) {
+    if (!r.quad_hexagram) continue
+    quadCount++
+    for (const k of Object.keys(quadDist)) {
+      const n = r.quad_hexagram.hexes[k].name
+      quadDist[k][n] = (quadDist[k][n] || 0) + 1
+    }
+  }
+  const quadKinds = Object.fromEntries(
+    Object.entries(quadDist).map(([k, v]) => [k, { distinct: Object.keys(v).length, dist: v }]),
+  )
+  const borderline = results.filter((r) => r.veto_score_conflict).length
+  const stratumUsed = results.filter((r) => r.stratum_used).length
 
+  // v0.9.0 F-1：进卦域优先取剧本声明的 hex_order（1296 六域全进卦），无声明再回落三才切分
+  const inHexDomains = Array.isArray(scriptObj.hex_order) && scriptObj.hex_order.length >= 6
+    ? scriptObj.hex_order.slice(0, 6)
+    : [...(scriptObj.sancai_mapping.tian || []).slice(0, 3), ...(scriptObj.sancai_mapping.di || []).slice(0, 3)]
+  const activeYaoCount = inHexDomains.filter((c) => !qt.frozen.includes(c)).length
   const out = {
     meta: {
       generated_at: new Date().toISOString(),
       snapshot: '同花顺自选股截图（收盘快照，周三 21:50）',
       market: { 上证: '+0.12%', 深成: '-0.14%', 创业板: '-0.26%' },
       horizon: '本周内（剩余周四/周五共 2 个交易日）',
-      script: script.script_id,
-      engine: `dsh-daoyi-yijing v0.5.0（确定性引擎${live ? '，在线模式：腾讯行情适配层' : '，离线模式'}，零 LLM 额度消耗）`,
+      script: scriptObj.script_id,
+      engine: `dsh-daoyi-yijing v${ENGINE_VERSION}（确定性引擎${live ? '，在线模式：腾讯行情适配层' : '，离线模式'}，零 LLM 额度消耗）`,
       mode: liveMeta.mode,
       live: live ? liveMeta : null,
       hex_encoding: {
@@ -299,9 +398,8 @@ export async function runBatch(opts = {}) {
         frozen_domains: qt.frozen, // 批次内取值唯一 → 恒阴（无分化能力，待补数据）
         // 有效爻数 k = 真正进卦的 6 个域（天3 + 地3）中未被冻结的数量；卦种上限 = 2^k
         //   （旧式 8 − frozen(非XX/FX) 基于「XX/FX 不进卦」的旧三才假设，三才重排后已失效）
-        in_hex_domains: [...(script.sancai_mapping.tian || []).slice(0, 3), ...(script.sancai_mapping.di || []).slice(0, 3)],
-        active_yao_count: [...(script.sancai_mapping.tian || []).slice(0, 3), ...(script.sancai_mapping.di || []).slice(0, 3)]
-          .filter((c) => !qt.frozen.includes(c)).length,
+        in_hex_domains: inHexDomains,
+        active_yao_count: activeYaoCount,
         domain_distinct: qt.stats,
         note: '有效独立爻数决定卦种上限（2^k）；frozen 域不贡献种类，需补真实数据才能激活',
       },
@@ -312,6 +410,19 @@ export async function runBatch(opts = {}) {
     sector_avg: Object.fromEntries(Object.entries(sectorAvg).map(([k, v]) => [k, Number(v.toFixed(2))])),
     trend_dist: dist,
     hexagram_dist: hxDist,
+    // v0.9.0 F-2：四连卦种类分布（原 0/56 无字段）+ 否决骑墙清单 + 分层生效统计
+    quad_kinds: quadKinds,
+    quad_coverage: { records_with_quad: quadCount, total: results.length },
+    veto_borderline: {
+      count: borderline,
+      rate: results.length ? Number((borderline / results.length).toFixed(4)) : 0,
+      note: '否决骑墙 = 触发一票否决但综合分 ≥0.5（评分不支持「不可行」）→ 人工复核优先清单',
+    },
+    stratum_audit: {
+      used: stratumUsed,
+      total: results.length,
+      note: '分层阈值生效数；离线快照无总市值 → 标 unavailable:snapshot-no-cap（不伪造层）',
+    },
     results,
   }
 
@@ -327,8 +438,18 @@ const LOG_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'logs')
 
 // 直接运行（node scripts/divine_batch_stocks.mjs [--live]）才执行；被 import 时不跑
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('divine_batch_stocks.mjs')) {
-  const live = process.argv.includes('--live')
-  runBatch({ live }).catch((e) => {
+  const argv = process.argv.slice(2)
+  const live = argv.includes('--live')
+  // v0.9.0 F-7：--script stock-trend-v2（1296）/ --ci-grouping semantic / --strong-override include-proxies
+  const flagVal = (name) => {
+    const i = argv.indexOf(name)
+    return i >= 0 ? argv[i + 1] : null
+  }
+  const scriptArg = flagVal('--script') || 'stock-trend'
+  const ciGrouping = flagVal('--ci-grouping') || undefined
+  const strongOverride = flagVal('--strong-override') || undefined
+  const fineMap = argv.includes('--no-fine-map') ? false : undefined
+  runBatch({ live, script: scriptArg, ciGrouping, strongOverride, fineMap }).catch((e) => {
     console.error('批推演失败:', e)
     process.exit(1)
   })

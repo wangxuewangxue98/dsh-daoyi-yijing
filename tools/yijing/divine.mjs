@@ -6,7 +6,8 @@ import { extractCodes, buildStockInputs, signalsToInputsV2 } from '../../adapter
 import { loadBaselines, thresholdsFromBaselines } from '../../lib/yijing/baselines.mjs'
 import { stratumOfQuote, stratumThresholdsFromBaselines, baselinesForStratum } from '../../lib/yijing/baselines.mjs'
 import { quadText } from '../../lib/yijing/quad-hexagram.mjs'
-import { callCloudModel } from '../../lib/yijing/cloud-model.mjs'
+import { callCloudModel, resolveCloudSettings, isCloudSettingsViable, getCloudModelAdapter } from '../../lib/yijing/cloud-model.mjs'
+import { FINE_MAP } from '../../lib/yijing/subdomain-fine-map.mjs'
 import { runLlmScoring, buildEvidencePack, mergeLlmScores } from '../../lib/yijing/llm-scoring.mjs'
 
 export const TOOL_PARAMS = {
@@ -44,7 +45,28 @@ export const TOOL_PARAMS = {
     enum: ['none', 'L2', 'L3'],
     description:
       '可选（仅 stock-trend-v2）：LLM 子域级补分档位。L2=分域级 6 次 prompt（约 36 秒）；L3=子域×aspect 36 次 prompt（约 3.6 分钟，四刀全激活）。' +
+      '费用承担方：默认走用户 DSH 会话当前模型（cloudModelAutoSession 默认开，费用计入用户会话）；可用 model 参数改走厂商/自有 Key。' +
       '行情信号优先，LLM 只补 NA 缺口；无云模型端点/超时/解析失败 → 该键缺分（NA），不造假',
+  },
+  fineMap: {
+    type: 'boolean',
+    description:
+      '可选（仅 stock-trend-v2，默认 true）：规则→子域名精映射（P2）——把行情规则按语义落到「分域×子域位」，' +
+      '无 LLM 时部分激活卦③（子域位卦）；设 false 回落 L2 分域粒度铺开（卦③坍缩为 2 种，用于 A/B 对照）',
+  },
+  ciGrouping: {
+    type: 'string',
+    enum: ['position', 'semantic'],
+    description:
+      '可选（默认 position）：卦③（子域卦）分组口径。position=按子域位序号 1-6（v0.8.x 现行为）；' +
+      "semantic=按六业务族 L/T/S/M/R/C（36 分域语义分族；1296 下信息量通常更高，需配 ciGrouping 口径的基线做 A/B）",
+  },
+  strongOverride: {
+    type: 'string',
+    enum: ['default', 'include-proxies'],
+    description:
+      '可选（默认 default）：强关联一票否决覆盖。default=现行为（代理量子域豁免否决，见剧本 veto_notes）；' +
+      "include-proxies=每个子域的强度项一律恢复强关联（复现 v0.5.0 与用户侧 fork 口径，用于量化豁免对 verdict 的影响）",
   },
   hexEncoding: {
     type: 'string',
@@ -153,12 +175,15 @@ export async function runYijingDivine(args = {}, config = {}) {
     codes = [...new Set(codes.map((c) => String(c).replace(/\D/g, '')).filter(Boolean))]
     if (codes.length) {
       try {
-        // v2（1296）：行情信号经迁移映射填 36 分域（L2 粒度）；384：原口径
+        // P2 精映射（v0.8.1，默认开）：行情规则 → 「分域×子域位」，无 LLM 部分激活卦③；fineMap:false 回落 L2
+        const useFineMap = isV2Script && args.fineMap !== false
+        // v2（1296）：行情信号经迁移映射填 36 分域（L2 粒度）或精映射子域粒度（P2）；384：原口径
         const { byCode, meta } = isV2Script
           ? await buildStockInputs([codes[0]], {
               db: buildCheckpointDatabase(scriptArg),
               migrationMap: scriptArg.migrated_from ? scriptArg.migrated_from.mapping : {},
-              inputsBuilder: (signals, ctx) => signalsToInputsV2(signals, ctx.db, ctx.migrationMap),
+              fineMap: useFineMap ? FINE_MAP : null,
+              inputsBuilder: (signals, ctx) => signalsToInputsV2(signals, ctx.db, ctx.migrationMap, ctx.fineMap),
             })
           : await buildStockInputs([codes[0]])
         const hit = byCode.get(codes[0])
@@ -176,40 +201,63 @@ export async function runYijingDivine(args = {}, config = {}) {
             fetched: meta.fetched,
             sector_proxy: meta.sector_proxy,
             index_error: meta.indexError,
+            fine_map: isV2Script ? { on: useFineMap, granularity: hit.granularity, cells: hit.migratedSubdomains, rule_hits: hit.fineHits } : null,
           }
           // S3：LLM 子域级补分（llmLevel=L2/L3；行情信号优先，LLM 只补 NA 缺口；无端点/失败 → 诚实降级）
           if ((args.llmLevel === 'L2' || args.llmLevel === 'L3') && isV2Script) {
-            try {
-              const pack = buildEvidencePack(hit.quote, meta.indexContext)
-              const llmCall = (messages, opts) => callCloudModel(messages, { ...opts, tool: opts && opts.purpose })
-              const run = await runLlmScoring({
-                script: scriptArg,
-                db: buildCheckpointDatabase(scriptArg),
-                pack,
-                llmCall,
-                level: args.llmLevel,
-                config: effectiveConfig,
-              })
-              const merged = mergeLlmScores(inputs, run.scores)
-              inputs = merged.inputs
-              // 补分的键从 NA 名单移除（已不是缺值）
-              scriptObj = {
-                ...scriptObj,
-                na: {
-                  domains: [],
-                  checkpoints: hit.naIds.filter((id) => run.scores[id] === undefined),
-                },
+            // 费用承担方解析（v0.8.1）：默认用户 DSH 会话模型（cloudModelAutoSession 默认开）；
+            //   kind=session → user-session（费用计入用户会话）；preset/custom → plugin-config（插件配置的自有 Key）；
+            //   无可用端点 → none（跳过补分，行情信号不受影响）。
+            const llmSettings = resolveCloudSettings(effectiveConfig)
+            const llmViable = isCloudSettingsViable(llmSettings) || typeof getCloudModelAdapter() === 'function'
+            const llmEndpoint = llmViable
+              ? {
+                  viable: true,
+                  kind: llmSettings.kind,
+                  provider: llmSettings.provider,
+                  model: llmSettings.model || null,
+                  via: isCloudSettingsViable(llmSettings) ? 'per-call-config' : 'module-adapter',
+                  cost_bearer: llmSettings.kind === 'session' ? 'user-session' : 'plugin-config',
+                }
+              : { viable: false, kind: llmSettings.kind, provider: llmSettings.provider, note: '无可用端点/未启用 → LLM 补分跳过（行情信号不受影响）' }
+            if (!llmViable) {
+              // 不发 36 次必然 null 的请求（省速率闸排队等待）；诚实标注降级原因
+              quoteMeta.llm_scoring = { level: args.llmLevel, degraded: true, reason: 'no-endpoint', endpoint: llmEndpoint }
+            } else {
+              try {
+                const pack = buildEvidencePack(hit.quote, meta.indexContext)
+                // 必须传 effectiveConfig：否则 callCloudModel 只用模块级适配器，model 参数覆盖/会话模型解析失效
+                const llmCall = (messages, opts) => callCloudModel(messages, { ...opts, tool: opts && opts.purpose, config: effectiveConfig })
+                const run = await runLlmScoring({
+                  script: scriptArg,
+                  db: buildCheckpointDatabase(scriptArg),
+                  pack,
+                  llmCall,
+                  level: args.llmLevel,
+                  config: effectiveConfig,
+                })
+                const merged = mergeLlmScores(inputs, run.scores)
+                inputs = merged.inputs
+                // 补分的键从 NA 名单移除（已不是缺值）
+                scriptObj = {
+                  ...scriptObj,
+                  na: {
+                    domains: [],
+                    checkpoints: hit.naIds.filter((id) => run.scores[id] === undefined),
+                  },
+                }
+                quoteMeta.llm_scoring = {
+                  level: run.level,
+                  degraded: run.degraded,
+                  prompts: run.coverage.prompts,
+                  filled: run.coverage.filled,
+                  failed: run.coverage.failed,
+                  added: merged.added,
+                  endpoint: llmEndpoint,
+                }
+              } catch (e) {
+                quoteMeta.llm_scoring = { level: args.llmLevel, degraded: true, error: String((e && e.message) || e), endpoint: llmEndpoint }
               }
-              quoteMeta.llm_scoring = {
-                level: run.level,
-                degraded: run.degraded,
-                prompts: run.coverage.prompts,
-                filled: run.coverage.filled,
-                failed: run.coverage.failed,
-                added: merged.added,
-              }
-            } catch (e) {
-              quoteMeta.llm_scoring = { level: args.llmLevel, degraded: true, error: String((e && e.message) || e) }
             }
           }
           if (args.hexEncoding !== 'absolute') {
@@ -252,6 +300,11 @@ export async function runYijingDivine(args = {}, config = {}) {
     baselines: stratumBaselines || undefined,
     reportStyle: args.reportStyle || config.reportStyle || 'classic',
     config: effectiveConfig,
+    // v0.9.0：四连卦编码口径 —— hexEncoding='absolute' 时四卦与单卦同源走绝对 0.5（F-5）；
+    //   其余（auto/baseline）走基线分位 p50。卦③分组口径（F-9）、强关联覆盖（F-4②）一并透传。
+    thresholdBasis: hexEncoding === 'absolute' ? 'absolute' : 'baseline',
+    ciGrouping: args.ciGrouping,
+    strongOverride: args.strongOverride === 'include-proxies' ? 'include-proxies' : undefined,
   })
 
   // 兜底退化显式告警（v0.6.0）：杜绝「8/8 同卦」无感发生
@@ -277,9 +330,12 @@ export async function runYijingDivine(args = {}, config = {}) {
   // 紧凑输出（对齐 l0 聚合工具思路：只回结论 + 计数，绕开 DSH 2000 行截断）
   const out = {
     verdict: result.verdict,
+    verdict_grade: result.verdict_grade || result.verdict,
+    verdict_margin: result.verdict_margin,
     risk_level: result.risk_level,
     overall_score: result.overall_score,
     has_veto: result.has_veto,
+    veto_score_conflict: result.veto_score_conflict === true, // 否决骑墙（veto 但综合分≥0.5）→ 人工复核优先
     conclusion: result.conclusion_text,
     sixiang: result.sixiang,
     sancai: Object.fromEntries(
@@ -293,7 +349,15 @@ export async function runYijingDivine(args = {}, config = {}) {
     },
     // 无任何有效输入 → 结论由缺值兜底产生，明确标注低置信（不得当作真实研判）
     degraded: inputsSource === 'none' || (result.inputs_coverage || {}).coverage < 0.5,
-    hex_encoding: { source: hexEncoding, baseline_used: hexEncoding.startsWith('baseline') },
+    // 编码口径全量显式化（v0.9.0 F-1/F-5/F-9）：阈值基准、卦③分组、爻序来源与降级状态可审计
+    hex_encoding: {
+      source: hexEncoding,
+      baseline_used: hexEncoding.startsWith('baseline'),
+      quad_threshold_basis: result.quad_hexagram ? result.quad_hexagram.structure.threshold_basis : null,
+      ci_grouping: result.quad_hexagram ? result.quad_hexagram.structure.ci_grouping : null,
+      hex_order: result.quad_hexagram ? result.quad_hexagram.structure.hex_order : null,
+      quad_degraded: result.quad_hexagram ? result.quad_hexagram.structure.degraded : null,
+    },
     quad_hexagram: compactQuad(result.quad_hexagram),
     llm: compactLlm(result.llm),
   }

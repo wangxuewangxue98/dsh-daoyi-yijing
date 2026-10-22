@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.6.0
+  version: 0.9.0
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -113,18 +113,53 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
   按 UTF-8 解 → 中文名全乱码，数字字段是 ASCII 所以不暴露）。
 - **离线/断网降级**：未配置或调用失败（401/超时/断网）时，L1→L7 返回结构化因数清单（剧本骨架），
   L1 文案走确定性模板（64 卦判词头 + 动爻变卦 + 八宫明细），推演结论依然成立、verdict 不受影响。
+- **四连卦纵向展开（v0.7.0）**：stock-trend 推演返回值新增 `quad_hexagram`——同一批 384 检查点按
+  域卦①/子域位卦②/业务族卦③（L 水平存量·T 趋势变化·S 结构质量·M 边际拐点·R 风险安全·C 催化事件）/
+  爻位卦④ 四个正交轴各投影成 6 爻卦，爻阈值取分组基线 p50（冻结组恒阴），含四卦 tone 一致性矩阵
+  （分歧样本 = 最值得人工复核，分歧时以卦①域卦为基准趋势卦）。
+- **工具层透出 + 分层校准（v0.7.1/v0.7.2）**：`yijing_divine` 紧凑输出含 `quad_hexagram` 摘要；
+  卦象编码阈值支持**按层参照系**（市值带×涨跌带 stratum，层内 n<20 诚实回落总体），
+  `hex_encoding` 标注 `baseline:stratum`/`baseline`/`absolute`。
+- **1296 四层剧本 `stock-trend-v2`（v0.8.0，默认不启用）**：6 域 × 6 分域 × 6 子域 × 6 aspect = 1296
+  检查点（8 位 id），与旧 384 并行注册零回归；显式 `script:'stock-trend-v2'` 开启。
+- **规则→子域名精映射 P2（v0.8.1，v2 默认开）**：`lib/yijing/subdomain-fine-map.mjs` 把行情规则
+  按语义落到「分域×子域位」——无 LLM 时**部分激活卦③**（400 只校准实测卦③ 2→31 种）；
+  `fineMap:false` 回落 L2 分域粒度（卦③坍缩为 2 种，A/B 对照用）。数据丰度诚实可查
+  （基线 meta.mean_data_density，P2 下约 8.6%——未命中子域全部 NA 不造假）。
+- **LLM 子域级补分（v0.8.0，`llmLevel`）**：`yijing_divine` 对 stock-trend-v2 可传
+  `llmLevel:'L2'`（分域级 6 问 ≈36 秒）或 `'L3'`（子域×aspect 36 问 ≈3.6 分钟，四刀全激活）；
+  行情信号优先、LLM 只补 NA 缺口；无端点/超时/解析失败 → 该键 NA 不造假。
+- **LLM 费用承担方（v0.8.1，默认用户会话）**：`llmLevel` 补分**默认走用户 DSH 会话当前模型**
+  （`cloudModelAutoSession` 默认开：Runtime 注入 sessionModel 且无自有 Key 即自动启用，费用计入
+  用户会话）；`quote.llm_scoring.endpoint` 回报 `cost_bearer`（`user-session`/`plugin-config`/`none`）；
+  可用 `model` 参数改走厂商/自有 Key。管理服务器 `/api/llm/score` 端点未部署前，L3 只有管线机制
+  验证（桩会话模型），未经真实 LLM 判断质量验证。
+- **「有条件可行」分级（v0.8.1）**：中间态带宽 0.5~0.75 按中位 0.625 切
+  `有条件可行·偏强`/`有条件可行·偏弱`（`verdict_grade` 字段），`verdict` 原值不变；
+  `verdict_margin` = 距上一条通过线的带符号余量（否决 → null）。
 
 ## 工具用法
-- `yijing_divine(matter, script?, inputs?, symbols?, useQuote?, hexEncoding?, detail?, reportStyle?, model?)`：主入口。给出可行/有条件可行/不可行结论；
+- `yijing_divine(matter, script?, inputs?, symbols?, useQuote?, llmLevel?, fineMap?, hexEncoding?, detail?, reportStyle?, model?)`：主入口。给出可行/有条件可行（·偏强/·偏弱）/不可行结论；
   `model` 可按调用覆盖模型（厂商 id / 自定义模型 name / session）；
   `symbols`（股票代码，多个取第一个，也可省略自动从 matter 提取）在 stock-trend 下触发**自动拉行情**；
-  `hexEncoding` 控制卦象阈值来源（`auto`/`baseline`/`absolute`）。
+  `hexEncoding` 控制卦象阈值来源（`auto`/`baseline`/`absolute`）；
+  `llmLevel`（仅 stock-trend-v2）：`L2`/`L3` LLM 子域级补分，默认走用户会话模型计费；
+  `fineMap`（仅 stock-trend-v2，默认 true）：规则→子域名精映射 P2。
 - `yijing_factor_prompt(matter, script?)`：生成八宫打分表 prompt（L1→L7 拆解用）。
   拿 prompt 给当前对话大模型填 JSON → 扁平化为 `{宫code: 分数}` 回传 `yijing_divine` 的 `inputs`。
 - `yijing_script_list()`：列出内置与自定义剧本。
 - `yijing_script_load(script_json)`：加载自定义剧本（JSON）。
 - `yijing_report(matter, script?, inputs?, model?)`：生成详细报告并回灌 `yijing_gray_logs/`。
 - `yijing_model_list()`：列出可选模型（6 厂商预设 + 自定义清单 + session）、当前选择与今日 LLM 额度快照。
+
+### LLM 批量补分与并发（v0.9.0）
+- **并发对 LLM 段无效**：`runLlmScoring` 串行逐 prompt 过全局速率门（默认 10/min），
+  总耗时 ≈ 总 prompt 数 ÷ 速率门；并发只会让请求一起排队。
+- **prompt 口径**：L2 = 6 问/只，L3 = 36 问/只 → 56 只 L3 默认门下 ≈3.4 小时，400 只 ≈24 小时。批量前先算预算。
+- **提速优先级**：放宽速率门 → L3 降 L2 → 不开 LLM 用 P2 精映射 → 并发（仅加速拉行情/确定性推演等非 LLM 段）。
+- **两段式写法**：非 LLM 段用 `mapLimit(items, limit, fn)`（`lib/yijing/concurrency.mjs`，顺序返回、单条失败不炸整批）；
+  LLM 段直接用 `runLlmScoring`，别覆盖 `throttle`。范例：`examples/llm-batch-concurrency.mjs`。
+- 详见 `docs/LLM批量补分与并发指南.md`。
 
 ### 配置项（cordis.patch.yml / index.mjs）
 | 字段 | 默认 | 说明 |
@@ -139,10 +174,14 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
 ## 内置剧本
 - `motor-design`：电机电磁设计·万事决（真实 384 检查点，226 活跃 / 158 NA）。
 - `stock-trend`：股票趋势研判·万事决（8 股票分析域 × 64 子域 × 384 爻）。
+- `stock-trend-v2`：股票趋势研判·1296 四层（6 域 × 6 分域 × 6 子域 × 6 aspect，8 位 id；
+  默认不启用，显式指定开启；支持 `llmLevel`/`fineMap`）。
 - `demo-384`：规范 384 结构演示剧本（verify 向量）。
 
 ## 判定规则
 - 符合阈值 = 阳(+1)，不符合 = 阴(-1)。
 - 强关联检查点失败 → 该子领域一票否决 → 整条结论判“不可行”。
 - 加权综合分 ≥ 0.75 → 可行；≥ 0.5 → 有条件可行；否则不可行（含否决优先）。
+- 「有条件可行」分级（v0.8.1，仅沟通/排序辅助，不改 verdict）：≥0.625 → 有条件可行·偏强；
+  <0.625 → 有条件可行·偏弱。`verdict_margin` 为距上一条通过线的带符号余量。
 - 股票场景额外映射：综合分 ≥ 0.62 → 看涨；≤ 0.45 → 看跌；之间 → 震荡。

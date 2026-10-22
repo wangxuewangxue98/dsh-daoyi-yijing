@@ -18,6 +18,10 @@
 - `stock-trend`：**股票趋势研判·万事决**（8 股票分析域 × 64 子域 × 384 爻）：
   基本面/技术面/资金面/消息面/行业面/宏观面/估值面/风险面，三才分组为
   天(基本面/行业/宏观)·地(技术/资金/估值)·人(消息/风险)。
+- `stock-trend-v2`：**股票趋势研判·1296 四层**（6 域 × 6 分域 × 6 子域 × 6 aspect = 1296 检查点，
+  8 位 id；与 384 并行注册、**默认不启用**，显式 `script:'stock-trend-v2'` 开启）：
+  支持 `llmLevel:'L2'/'L3'` LLM 子域级补分（默认走用户 DSH 会话模型计费）与
+  `fineMap` 规则→子域名精映射（P2，无 LLM 部分激活卦③）。
 - `demo-384`：规范 384 结构演示剧本（verify 向量）。
 - 自定义剧本：经 `yijing_script_load` 提交 JSON，落盘 `data/scripts/` 持久化（重启回灌）。
 
@@ -116,3 +120,59 @@ node scripts/divine_stock_600711.mjs   # 盛屯矿业(600711) 一个月涨跌推
   补数据的价值在多因子研判质量，卦象变多只是副产品。
 
 > ⚠️ 股票推演结果由公开数据映射的因子评分驱动，属结构化多因子研判示意，**不构成任何投资建议**。
+
+## v0.9.0：会话 LLM 层激活修复 + F-1..F-10 全量落地
+- **★ 会话模型「透传了却不激活」缺陷已修**：Config schema 的 `cloudModelEnabled` 默认 `false` 会被填进 config，
+  而会话分支用 `cloudModelEnabled !== false` 判启用 → 恒 false，会话模型**永不激活**（与文档承诺相悖）。
+  现由 `buildSessionCloudConfig()` 在配置构建层显式置位并归一 `provider:'session'`；
+  **`cloudModelAutoSession` 是会话模型的唯一开关**。验收 `scripts/test_session_activation.mjs` **31 PASS**。
+- **F-1 爻序形状容错**：`hexOrderOf()` 对畸形 `hex_order` 返回可审计的降级状态（`declared` / `fallback:domains` / `sancai`），不再抛错。
+- **F-2/F-3/F-7 批量**：`divine_batch_stocks.mjs` 支持 `--script`（含 v2）/ `--ci-grouping` / `--strong-override` / `--no-fine-map`；
+  逐条输出 `verdict_grade` / `quad_hexagram` / 分层审计；`engine` 版本改为动态读 `package.json`（不再写死 v0.5.0）。
+- **F-4 否决证据化**：`veto_notes` 写清代理量豁免依据；`applyStrongOverride` 可把代理项恢复强关联（v2 **204 → 216**）；
+  新增 `veto_score_conflict`「骑墙」标记（verdict 三值不变）。
+- **F-5** `thresholdBasis: baseline | absolute` 可选；**F-6** `--days N` 多日滚动校准（日 K 适配层；
+  `fqkline` 已被 WAF 拦截，改用 `newfqkline`）；**F-8** `scripts/migrate_hex_order.mjs` 历史卦象迁移。
+- **F-9 卦③ 语义分组**：`SUBDOMAIN_V2_FAMILY` 覆盖 36 个 v2 分域，`ciGrouping:'semantic'`；
+  400 只校准 `baselines-stock-v2-semantic.json`（四卦 di 56/si 51/ci 28/xi 29，位置分组 ci 31）。
+- 全部为加法改动，v0.8.x 判定逐位不变；`scripts/test_v090_features.mjs` **79 PASS / 0 FAIL**，16 个既有套件全绿。
+
+## LLM 批量补分与并发（v0.9.0 / F-10）
+- **先讲清约束**：`runLlmScoring` 内部串行，每个 prompt 过一次全局速率门（默认 10 次/分钟，60s 滑动窗口）。
+  ⇒ **并发度提高不提升 LLM 吞吐**，只会让更多请求排队等更久；真正吃并发的是拉行情 / 确定性推演 / 四连卦投影这些**不占额度**的段。
+- **prompt 口径**：L2 = 6 问/只（分域级），L3 = 36 问/只（子域×aspect）；对话式 `yijing_divine` 另有 decompose+conclude = 2 次，不计入批量。
+
+| 档位 | 标的数 | 总 prompt | 默认门(10/min) 预计耗时 |
+|---|---|---|---|
+| L3 | 1 | 36 | 3.6 分钟 |
+| L3 | 10 | 360 | 36 分钟 |
+| L3 | 56 | 2 016 | ≈3.4 小时 |
+| L3 | 400 | 14 400 | ≈24 小时 |
+
+- **提速优先级**（前一级做不到才退下一级）：① 放宽速率门（`freeLlmPerMinute` / env `DAOYI_LLM_FREE_PER_MINUTE`，0=不限）
+  → ② L3 降 L2（省 83%，代价是卦③ 分辨率下降）→ ③ 不开 LLM 用 P2 精映射（零费用，卦③ 2→31 种）
+  → ④ 并发（只加速非 LLM 段）。
+- **安全并发范例**：`examples/llm-batch-concurrency.mjs`（默认全 stub，零网络零费用）；
+  工具 `lib/yijing/concurrency.mjs` 提供 `mapLimit`（顺序返回、单条失败不炸整批）与 `estimateLlmBatch`/`renderEstimateTable`。
+  节流注入点 `runLlmScoring({ throttle })`，生产环境**不要覆盖**。
+- 完整指南见 `docs/LLM批量补分与并发指南.md`。
+
+## 四连卦与 1296 四层（v0.7.0–v0.8.1）
+- **四连卦（v0.7.0）**：stock-trend 推演返回值新增 `quad_hexagram`——同一批检查点按
+  域卦①/子域位卦②/业务族卦③(L/T/S/M/R/C)/爻位卦④ 四个正交轴各投影成 6 爻卦，阈值取分组基线 p50，
+  含四卦一致性矩阵（分歧样本建议人工复核）。
+- **1296 四层 `stock-trend-v2`（v0.8.0，默认不启用）**：显式 `script:'stock-trend-v2'` 开启；
+  实证复现「瓶颈在数据不在结构」——行情 L2 粒度下卦③坍缩为 2 种。
+- **规则→子域名精映射 P2（v0.8.1，v2 默认开）**：`lib/yijing/subdomain-fine-map.mjs` 把行情规则
+  按语义落到「分域×子域位」，无 LLM 部分激活卦③（400 只校准实测卦③ **2→31 种**）；
+  `fineMap:false` 可 A/B 对照。数据丰度诚实可查（基线 `meta.mean_data_density` ≈8.6%，未命中子域 NA）。
+- **LLM 子域级补分（v0.8.0 `llmLevel`，v0.8.1 费用默认用户会话）**：L2=分域 6 问≈36 秒、
+  L3=子域×aspect 36 问≈3.6 分钟（四刀全激活）；**费用默认走用户 DSH 会话当前模型**
+  （`cloudModelAutoSession` 默认开），`quote.llm_scoring.endpoint.cost_bearer` 可见；
+  行情信号优先、LLM 只补 NA 缺口。管理服务器 `/api/llm/score` 未部署前仅完成管线机制验证。
+- **「有条件可行」分级（v0.8.1）**：`verdict_grade` 把中间态按 0.625 切偏强/偏弱，
+  `verdict_margin` 给距通过线余量；verdict 原值不变。
+- **基线**：`baselines-stock-v2.json` 为 P2 粒度重校准版（400 只，四卦 di 56/si 51/ci 31/xi 29）；
+  v0.9.0 另产出 `baselines-stock-v2-semantic.json`（语义分组，ci 28）与
+  `baselines-stock-v2-d5.json`（60 只 × 5 日滚动，density 4.0%，**仅作层样本量对照**）；
+  旧 L2 粒度版归档为 `baselines-stock-v2-l2.json`（仅 A/B 对照）。

@@ -74,30 +74,38 @@ export function signalsToInputs(signals, db = buildCheckpointDatabase(buildStock
 }
 
 /**
- * v2（1296 / stock-trend-v2）版 inputs 构建（阶段 2 / S3，v0.8.0）。
+ * v2（1296 / stock-trend-v2）版 inputs 构建（阶段 2 / S3，v0.8.0；P2 精映射 v0.8.1）。
  * 与 signalsToInputs 的差异：
  *   ① 迁移映射：384 形态信号（子域码 JS01..FX08）经 migrationMap 汇聚到 36 分域
  *      （同分域多子域信号取均值；无信号分域 → 全部 NA，不造假）；
  *   ② aspect 位取 id **末两位**（8 位 id 的第 7-8 位；6 位口径取 5-7 位，勿混）；
- *   ③ 粒度 = 分域级（L2）：每分域 36 项同 delta 铺开——卦②/卦③激活、卦④同质
- *      （文档化局限；L3 子域级数据由 llm-scoring.mjs 补分升级）。
+ *   ③ 粒度两档：
+ *      - fineMap=null（L2）：每分域 36 项同 delta 铺开——卦②/卦③激活、卦④同质
+ *        （文档化局限；L3 子域级数据由 llm-scoring.mjs 补分升级）；
+ *      - fineMap=FINE_MAP（P2 子域粒度）：信号落到「分域×子域位」→ 卦③（子域位）
+ *        在无 LLM 时部分激活（未命中子域 NA，aspect 仍同质 → 卦④不变）。
  * @param {Array} signals quoteToSignals 产物（384 形态）
  * @param {object} db buildCheckpointDatabase(v2Script)
  * @param {Record<string,string>} migrationMap 旧子域码 → 新分域码（v2.migrated_from.mapping）
+ * @param {object|null} [fineMap] 旧子域码 → {sd, sub}（subdomain-fine-map.mjs FINE_MAP；P2 精映射）
  */
-export function signalsToInputsV2(signals, db, migrationMap) {
-  // ① 迁移汇聚：旧子域码 → 分域 delta 均值
-  const acc = new Map() // 分域码 → {sum, n}
+export function signalsToInputsV2(signals, db, migrationMap, fineMap = null) {
+  // ① 迁移汇聚：旧子域码 → 分域 delta 均值（L2）；fineMap 命中 → 分域×子域位 delta 均值（P2）
+  const acc = new Map() // key = 分域码（L2）或 `${分域码}|${子域位}`（fine）
+  let fineHits = 0
   for (const s of signals || []) {
     const oldSub = `${s.code}${String(s.subIdx + 1).padStart(2, '0')}`
-    const target = (migrationMap || {})[oldSub]
-    if (!target) continue // 无迁移目标的信号丢弃（不猜）
-    if (!acc.has(target)) acc.set(target, { sum: 0, n: 0 })
-    acc.get(target).sum += s.delta
-    acc.get(target).n += 1
+    const fine = fineMap && fineMap[oldSub]
+    const sd = fine ? fine.sd : (migrationMap || {})[oldSub]
+    if (!sd) continue // 无迁移目标的信号丢弃（不猜）
+    const key = fine ? `${sd}|${fine.sub}` : sd
+    if (!acc.has(key)) acc.set(key, { sum: 0, n: 0 })
+    acc.get(key).sum += s.delta
+    acc.get(key).n += 1
+    if (fine) fineHits++
   }
-  const subDelta = new Map()
-  for (const [k, v] of acc) subDelta.set(k, v.sum / v.n)
+  const cellDelta = new Map()
+  for (const [k, v] of acc) cellDelta.set(k, v.sum / v.n)
   // ② 铺开到 1296 检查点（aspect 位 = id 末两位）
   const inputs = {}
   const naIds = []
@@ -107,7 +115,7 @@ export function signalsToInputsV2(signals, db, migrationMap) {
       continue
     }
     const subKey = cp.id.slice(0, 4) // 分域码
-    const delta = subDelta.get(subKey)
+    const delta = fineMap ? cellDelta.get(`${subKey}|${Number(cp.id.slice(4, 6))}`) : cellDelta.get(subKey)
     if (delta === undefined) {
       naIds.push(cp.id)
       continue
@@ -117,8 +125,15 @@ export function signalsToInputsV2(signals, db, migrationMap) {
       clamp(0.5 + delta * ASPECT_COEFS[ai] + ASPECT_BIAS[ai], 0.02, 0.98).toFixed(4),
     )
   }
-  const activeDomains = [...new Set([...subDelta.keys()].map((k) => k.slice(0, 2)))]
-  return { inputs, naIds, activeDomains, migratedSubdomains: subDelta.size }
+  const activeDomains = [...new Set([...cellDelta.keys()].map((k) => k.slice(0, 2)))]
+  return {
+    inputs,
+    naIds,
+    activeDomains,
+    granularity: fineMap ? 'subdomain' : 'L2',
+    migratedSubdomains: acc.size, // 有 delta 的格子数（L2=分域数 / P2=分域×子域数）
+    fineHits, // P2：命中精映射的旧子域信号条数（L2 模式恒 0）
+  }
 }
 
 /** 取数器解析：显式 fetcher > 代理环境 curl > 全局 fetch（quote.mjs 默认） */
@@ -134,7 +149,8 @@ function resolveFetcher(opts = {}) {
  * 拉行情并为每只股票构建 inputs（对话单只 / 校准批量共用）。
  * @param {string[]} codes 6 位代码
  * @param {object} opts fetchQuotes/fetchIndexQuotes 透传（fetcher/timeoutMs/indexSymbols）+ sectorPctOf(code)
- *   + inputsBuilder(signals, {db, migrationMap}) 自定义 inputs 构建（v2 剧本用 signalsToInputsV2）
+ *   + inputsBuilder(signals, {db, migrationMap, fineMap}) 自定义 inputs 构建（v2 剧本用 signalsToInputsV2）
+ *   + fineMap（P2 精映射，v2 用；透传给 inputsBuilder）
  * @returns {{byCode: Map<string,{quote,signals,inputs,naIds,activeDomains}>,
  *            meta:{requested,fetched,error,indexContext,indexError,rules,sector_proxy}}}
  */
@@ -171,7 +187,12 @@ export async function buildStockInputs(codes, opts = {}) {
       indexCtx: indexContext,
     })
     const buildInputs = opts.inputsBuilder || ((sig) => signalsToInputs(sig))
-    byCode.set(code, { quote: q, name: q.name, signals, ...buildInputs(signals, { db: opts.db, migrationMap: opts.migrationMap }) })
+    byCode.set(code, {
+      quote: q,
+      name: q.name,
+      signals,
+      ...buildInputs(signals, { db: opts.db, migrationMap: opts.migrationMap, fineMap: opts.fineMap || null }),
+    })
   }
 
   return {

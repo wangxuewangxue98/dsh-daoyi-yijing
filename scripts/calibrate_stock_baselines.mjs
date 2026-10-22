@@ -8,6 +8,10 @@
 //
 // 用法：
 //   node scripts/calibrate_stock_baselines.mjs [--n 400] [--seed 20261022] [--out lib/yijing/baselines-stock.json]
+//   node scripts/calibrate_stock_baselines.mjs --n 400 --fine-map --script stock-trend-v2 \
+//        --out lib/yijing/baselines-stock-v2-semantic.json --ci-grouping semantic
+//   node scripts/calibrate_stock_baselines.mjs --n 60 --days 5 --fine-map --script stock-trend-v2 \
+//        --out lib/yijing/baselines-stock-v2-d5.json          # F-6 多日滚动校准
 // 网络失败时退出码非 0（不写半截基线）。
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -16,8 +20,10 @@ import { buildStockTrendV2Script } from '../lib/yijing/scripts/stock-trend-v2.mj
 import { evaluateDeterministic } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript, buildOrderFromScript } from '../lib/yijing/hexagram.mjs'
 import { parseCp, resolveQuadHexagram } from '../lib/yijing/quad-hexagram.mjs'
-import { familyOf } from '../lib/yijing/subfamily-map.mjs'
+import { familyOf, familyOfV2 } from '../lib/yijing/subfamily-map.mjs'
+import { FINE_MAP, assertFineMapConsistency } from '../lib/yijing/subdomain-fine-map.mjs'
 import { fetchQuotes, quoteToSignals, createCurlFetcher } from '../adapters/quote.mjs'
+import { fetchDailyKlinesBatch, daysToSnapshots } from '../adapters/quote-history.mjs'
 import { buildStockInputs, signalsToInputs, signalsToInputsV2 } from '../adapters/stock-inputs.mjs'
 import { capBand, pctBand, stratumOfQuote } from '../lib/yijing/baselines.mjs'
 
@@ -37,8 +43,35 @@ const SEED = Number(argOf('seed', 20261022))
 // S2/S4：--script stock-trend-v2 校准 1296 剧本（分组维度 = 分域位/子域位/aspect 位，8 位 id）
 const SCRIPT_ID = argOf('script', 'stock-trend')
 const IS_V2 = SCRIPT_ID === 'stock-trend-v2'
+// P2（v0.8.1）：--fine-map 用规则→子域名精映射构建 inputs（与 divine.mjs 默认同口径）；
+//   不加则回落 L2 分域粒度铺开。两种粒度的基线不可混用——运行期用什么粒度校准就用什么粒度。
+const USE_FINE_MAP = hasFlag('fine-map')
+if (USE_FINE_MAP && !IS_V2) {
+  console.error('--fine-map 仅对 --script stock-trend-v2 有意义（384 剧本本就是子域粒度）')
+  process.exit(1)
+}
+// F-6（v0.9.0）：--days N 多日滚动校准（同一批标的取最近 N 个交易日快照，层样本量提升一个量级）。
+//   N=1（默认）= 单日横截面，行为与 v0.8.x 完全一致。历史源失败 → 该只只落实时快照并计入 kline 统计。
+const DAYS = Math.max(1, Number(argOf('days', 1)) || 1)
+// F-9（v0.9.0）：--ci-grouping semantic 按业务族语义分族校准卦③（需配同口径基线文件，见 OUT_FILE 说明）
+const CI_GROUPING = argOf('ci-grouping', 'position') === 'semantic' ? 'semantic' : 'position'
+if (CI_GROUPING === 'semantic' && !IS_V2) {
+  console.error('--ci-grouping semantic 仅对 --script stock-trend-v2 有意义（384 的卦③本就是业务族口径）')
+  process.exit(1)
+}
 const OUT_FILE = IS_V2
-  ? argOf('out', fileURLToPath(new URL('../lib/yijing/baselines-stock-v2.json', import.meta.url)))
+  ? argOf(
+      'out',
+      fileURLToPath(
+        new URL(
+          // 语义分族口径的 ci 阈值与位置分组不同源 → 默认落独立文件，杜绝两种口径混用后阈值错配
+          CI_GROUPING === 'semantic'
+            ? '../lib/yijing/baselines-stock-v2-semantic.json'
+            : '../lib/yijing/baselines-stock-v2.json',
+          import.meta.url,
+        ),
+      ),
+    )
   : argOf('out', fileURLToPath(new URL('../lib/yijing/baselines-stock.json', import.meta.url)))
 // --curl：代理环境注入 curl fetcher（undici 不读代理环境变量；与 A/B 实测同款通道）
 const CURL_PROXY = hasFlag('curl') ? (process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.https_proxy || process.env.http_proxy || undefined) : undefined
@@ -165,6 +198,44 @@ async function main() {
   codes.length = 0
   codes.push(...selected)
 
+  // ── F-6（v0.9.0）：多日滚动样本（--days N）──
+  // 层样本量不足（单日 400 → 15 层里 8 层 n<20）的根治办法是沿时间轴滚动：同一批标的取最近
+  // N 个交易日快照重放。历史源取不到 → 该只只保留其实时快照（不虚构历史），并计入 kline 统计。
+  const samples = [] // [{code, quote, date|null}]
+  let klineStat = { days: DAYS, requested: 0, ok: 0, failed: 0, snapshots: 0, errors: [] }
+  if (DAYS > 1) {
+    process.stdout.write(`  多日滚动：拉 ${selected.length} 只日 K（最近 ${DAYS + 1} 根）…`)
+    const hist = await fetchDailyKlinesBatch(selected, {
+      count: DAYS + 1,
+      ...(CURL_PROXY ? { fetcher: createCurlFetcher({ proxy: CURL_PROXY, timeoutMs: 12000 }) } : {}),
+    })
+    klineStat = {
+      days: DAYS,
+      requested: selected.length,
+      ok: hist.fetched,
+      failed: hist.failed,
+      snapshots: 0,
+      errors: hist.errors,
+    }
+    for (const code of selected) {
+      const base = quotes.get(code)
+      // 历史日取「除最后一根以外的」最近 DAYS-1 天：最后一根通常就是当日收盘，已由实时快照覆盖，
+      // 避免同一天被计两次；实时快照字段全（PE/PB/换手/成交额），历史日只有收盘与涨跌。
+      const snaps = daysToSnapshots(base, (hist.byCode.get(code) || []).slice(0, -1), DAYS - 1)
+      if (snaps.length) {
+        for (const s of snaps) samples.push({ code, quote: s, date: s.date })
+        klineStat.snapshots += snaps.length
+      }
+      samples.push({ code, quote: base, date: null }) // 当日实时快照（字段最全）
+    }
+    console.log(
+      `\r  日 K 成功 ${hist.fetched}/${selected.length} 只 → 滚动样本 ${samples.length} 条` +
+        `（单日基线为 ${selected.length} 只；失败示例 ${hist.errors.slice(0, 3).join(',') || '无'}）`,
+    )
+  } else {
+    for (const code of selected) samples.push({ code, quote: quotes.get(code), date: null })
+  }
+
   // 指数上下文一次（与 divine 路径同口径）
   const ctx = await buildStockInputs(codes.slice(0, 1))
   const indexContext = ctx.meta.indexContext
@@ -176,6 +247,15 @@ async function main() {
   }
 
   const script0 = IS_V2 ? buildStockTrendV2Script() : buildStockScript()
+  // P2 自检：精映射与 MIGRATION_MAP 分域归属必须一致（不一致则基线无效）
+  if (USE_FINE_MAP) {
+    const chk = assertFineMapConsistency(script0.migrated_from.mapping, script0.domains)
+    if (chk.mismatches.length || chk.outOfRange.length) {
+      console.error(`FINE_MAP 自检失败：${JSON.stringify(chk)}`)
+      process.exit(1)
+    }
+    console.log(`  P2 精映射自检通过（${chk.total} 条）`)
+  }
   const db = buildCheckpointDatabase(script0)
   const migrationMap = script0.migrated_from ? script0.migrated_from.mapping : {}
   const buildInputsFor = (q) => {
@@ -184,21 +264,26 @@ async function main() {
       sectorAmountWan: undefined,
       indexCtx: indexContext,
     })
-    // v2：384 形态信号经迁移映射填 36 分域（L2 粒度）；384：原子域口径
-    return IS_V2 ? signalsToInputsV2(sigs, db, migrationMap) : signalsToInputs(sigs, db)
+    // v2：384 形态信号经迁移映射填 36 分域（L2 粒度）；--fine-map 时精映射到分域×子域位（P2）。384：原子域口径
+    return IS_V2
+      ? signalsToInputsV2(sigs, db, migrationMap, USE_FINE_MAP ? FINE_MAP : null)
+      : signalsToInputs(sigs, db)
   }
   // 分组基线累加器（si 子域位 / ci 业务族 / xi aspect）：跨股票收集「每只股票每组阳率」
   // groupsAccStratum：同口径按 stratum 分层收集（v0.7.2 按层阈值）
   const groupsAcc = { si: {}, ci: {}, xi: {} }
   const groupsAccStratum = {}
   const rows = []
-  for (let i = 0; i < codes.length; i++) {
-    const code = codes[i]
-    const q = quotes.get(code)
+  for (let i = 0; i < samples.length; i++) {
+    const { code, quote: q, date } = samples[i]
     const built = buildInputsFor(q)
     const script = { ...script0, na: { domains: [], checkpoints: built.naIds } }
     // 确定性推演（不调 LLM：校准只求宫分分布，避免数百次撞免费 LLM 速率闸）；返回逐检查点阴阳用于分组基线
-    const r = evaluateDeterministic(script, { inputs: built.inputs, returnEvaluations: true })
+    const r = evaluateDeterministic(script, {
+      inputs: built.inputs,
+      returnEvaluations: true,
+      ciGrouping: CI_GROUPING, // F-9：卦③分组口径必须与基线文件口径一致
+    })
     const scores8 = {}
     for (const d of script0.domains) scores8[d.code] = r.domain_results[d.code]?.score ?? null
     // 本只股票各分组阳率 → 跨股票收集（使每只股票该组阳率≈中位 → 消恒阳爻）
@@ -218,7 +303,11 @@ async function main() {
         // 1296：si=分域位 / ci=子域位 / xi=aspect 位（id 位次原生 1-6）
         const { si, ci, xi } = parseCp(cp.id)
         if (si >= 1 && si <= 6) acc('si', String(si), y)
-        if (ci >= 1 && ci <= 6) acc('ci', String(ci), y)
+        // F-9：semantic 口径按业务族（36 分域 → 六族）分组，与 quad-hexagram 的 ciGrouping 同源
+        if (CI_GROUPING === 'semantic') {
+          const f = familyOfV2(cp.id.slice(0, 4))
+          if (f) acc('ci', f, y)
+        } else if (ci >= 1 && ci <= 6) acc('ci', String(ci), y)
         if (xi >= 1 && xi <= 6) acc('xi', String(xi), y)
       } else {
         const { di, si, ci } = parseCp(cp.id)
@@ -237,13 +326,17 @@ async function main() {
     }
     rows.push({
       code,
+      date: date || null, // F-6：多日滚动样本的交易日（实时快照为 null）
       name: q.name,
       stratum: stratumOf(q),
       scores: scores8,
       coverage: r.inputs_coverage ? r.inputs_coverage.coverage : null,
+      // data_density：填充数 / 全量检查点（1296 或 384）——inputs_coverage 的分母已剔除 na，
+      // 报价路径下 na=未填充 → coverage 恒 100% 具误导性；density 才是真实数据丰度（P2 关键指标）。
+      data_density: (db.checkpoints.length - built.naIds.length) / db.checkpoints.length,
       hex: null,
     })
-    if ((i + 1) % 50 === 0) process.stdout.write(`  已推演 ${i + 1}/${codes.length}\n`)
+    if ((i + 1) % 50 === 0) process.stdout.write(`  已推演 ${i + 1}/${samples.length}\n`)
   }
 
   console.log('[3/4] 计算各宫总体分位（p25/p50/p75）…')
@@ -318,7 +411,8 @@ async function main() {
             }
       }
     }
-    strataCells[s] = { n: sub.length, domain_thresholds, group_thresholds }
+    // F-6：层内样本量置信度（n>=20 才产出可用阈值；否则调用方 baselinesForStratum 回落总体）
+    strataCells[s] = { n: sub.length, sufficient: sub.length >= 20, domain_thresholds, group_thresholds }
   }
   // 分层审计：各层宫分 p50 与总体的偏离（跨层极差；越小说明总体阈值对各层代表越均衡）
   const strataP50 = {}
@@ -375,17 +469,31 @@ async function main() {
   console.log('[4b] 四连卦分组基线回验（二遍推演，统计 di/si/ci/xi 卦种）…')
   const baselinesForQuad = { script_id: script0.script_id, domains, groups }
   const quadCount = { hex_di: {}, hex_si: {}, hex_ci: {}, hex_xi: {} }
-  for (const row of rows) {
-    const q = quotes.get(row.code)
+  for (let ri = 0; ri < rows.length; ri++) {
+    const row = rows[ri]
+    // F-6：多日样本要按该行自己的快照回放（rows 与 samples 同序），不能一律用实时快照
+    const q = samples[ri] ? samples[ri].quote : quotes.get(row.code)
     const built = buildInputsFor(q)
     const script = { ...script0, na: { domains: [], checkpoints: built.naIds } }
-    const r2 = evaluateDeterministic(script, { inputs: built.inputs, returnEvaluations: true })
+    const r2 = evaluateDeterministic(script, {
+      inputs: built.inputs,
+      returnEvaluations: true,
+      ciGrouping: CI_GROUPING,
+    })
     // ⚠ 必须用「带 NA 标记」的 db：quad-hexagram 按 cp.na 跳过 NA 检查点，
     //   无标记 db 会把 NA 当阴计入分组阳率（实测令 si/ci/xi 卦种坍缩到 2 种）。
     //   evaluateDeterministic 内部自建 db（带 na），这里取其逐检查点 evaluations 回放。
     const dbNa = buildCheckpointDatabase(script)
     const evalsMap = new Map(Object.entries(r2.evaluations || {}))
-    const quad = resolveQuadHexagram(dbNa, evalsMap, script, baselinesForQuad, { domain_results: r2.domain_results })
+    const quad = resolveQuadHexagram(
+      dbNa,
+      evalsMap,
+      script,
+      baselinesForQuad,
+      { domain_results: r2.domain_results },
+      // F-9：回验口径必须与校准口径一致（semantic/position），否则卦③统计失真
+      { ciGrouping: CI_GROUPING, thresholdBasis: 'baseline' },
+    )
     if (!quad) continue
     for (const k of Object.keys(quadCount)) {
       const nm = quad.hexes[k].name
@@ -418,11 +526,31 @@ async function main() {
       rules_note:
         '宫分口径与 tools/yijing/divine.mjs 的行情自动路径完全一致（adapters/stock-inputs.mjs 共享）；' +
           '爻义=「相对参照系偏强/偏弱」而非绝对 0.5',
+      inputs_granularity: IS_V2 ? (USE_FINE_MAP ? 'subdomain（P2 规则→子域名精映射）' : 'L2（分域粒度铺开）') : 'subdomain（384 原子域）',
+      // F-6 / F-9（v0.9.0）：样本结构与分组口径显式化
+      calibration: {
+        days: DAYS,
+        rows: rows.length,
+        unique_codes: new Set(rows.map((r) => r.code)).size,
+        kline: klineStat,
+        ci_grouping: CI_GROUPING,
+        index_context: DAYS > 1 ? 'realtime-for-all-days（历史每日的指数基准未回溯，HY01 代理沿用实时大盘）' : 'realtime',
+        note:
+          DAYS > 1
+            ? '多日滚动：同一批标的最近 N 个交易日快照重放；层样本量 ≈ 单日 × N（受停牌/上市时长限制）'
+            : '单日横截面（v0.8.x 口径）',
+      },
       sector_proxy: '无板块标签：HY01 用大盘涨跌代理、HY08 不出信号（避免与 HG07 同源）',
       index_symbol: indexContext ? indexContext.symbol : null,
       mean_inputs_coverage: Number(
         (rows.reduce((s, r) => s + (r.coverage || 0), 0) / rows.length).toFixed(4),
       ),
+      mean_data_density: Number(
+        (rows.reduce((s, r) => s + (r.data_density || 0), 0) / rows.length).toFixed(4),
+      ),
+      data_density_note:
+        '填充检查点数 / 全量检查点数（P2 下行情规则只覆盖部分「分域×子域」，其余诚实 NA；' +
+        'inputs_coverage 因分母剔除 na 恒 100%，以 density 为准）',
       hexagram_distinct_in_sample: distinct,
       hexagram_top8: top,
       quad_distinct_in_sample: quadDistinct,
@@ -440,8 +568,18 @@ async function main() {
   }
   writeFileSync(OUT_FILE, JSON.stringify(out, null, 2), 'utf8')
   console.log(`\n基线已写入 ${OUT_FILE}`)
+  // F-6 诚实告警：历史日快照只有「收盘价 + 涨跌幅」（PE/PB/换手/成交额等实时字段不可回溯），
+  //   多日模式是**用单样本字段变少换层样本量变多**，四卦分化可能不升反降。
+  //   生产建议：按日持久化实时快照（cron 落库），滚动校准应基于「全字段历史」而非 kline 回放。
+  if (DAYS > 1 && out.meta.mean_data_density < 0.06) {
+    console.warn(
+      `  ⚠ 多日模式数据丰度仅 ${(out.meta.mean_data_density * 100).toFixed(1)}%（历史日只有收盘/涨跌）——` +
+        `层样本量提升但单样本信息量下降；四卦分组基线建议仍以全字段快照校准`,
+    )
+  }
   console.log(
     `样本 ${rows.length} 只；平均 inputs 覆盖率 ${(out.meta.mean_inputs_coverage * 100).toFixed(1)}%；` +
+      `平均数据丰度 density ${(out.meta.mean_data_density * 100).toFixed(1)}%；` +
       `p50 阈值下样本内卦象 ${distinct} 种（理论上限 64）`,
   )
   console.log(`Top 卦：${top.map(([k, v]) => `${k}×${v}`).join('、')}`)

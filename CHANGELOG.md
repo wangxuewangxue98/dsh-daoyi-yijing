@@ -1,5 +1,136 @@
 # CHANGELOG
 
+## 0.9.0 (2026-10-23)
+### 会话 LLM 层激活修复 + 使用效果评价报告 F-1..F-10 全量落地
+
+> 定位：**① 修掉「会话模型透传了却不激活」的实网缺陷**（用户列为第一优先）；
+> ② 把《道一易经-v0.8.0使用效果评价-实证核对与改进方案》的 F-1..F-10 十条改进**一次做完**。
+> 全部为**加法改动**：v0.8.x 既有判定逐位不变（verdict / 卦象 / 阈值口径零位移），
+> 回归：16 个既有套件 + 新增 2 个套件全绿（见文末「回归口径」）。
+
+#### ★ 会话 LLM 层激活修复（P0，实网缺陷）
+- **现象**：Runtime 已注入 `sessionModel`、`cloudModelAutoSession` 默认 `true`，但**起卦从不走会话模型**——
+  拆解/结论文案与 L2/L3 补分全部静默回落离线模板/NA。
+- **根因（代码证据）**：插件 Config schema 的 `cloudModelEnabled` 默认 `false`，schemastery 会把默认值**填进 config**；
+  而 `resolveCloudSettings` 的会话分支用 `config.cloudModelEnabled !== false` 判启用
+  （`lib/yijing/cloud-model.mjs:192`），默认配置下该判断**恒为 false** → 自动借用分支永不生效，
+  与「无需手动开 `cloudModelEnabled`」的文档承诺直接相悖。
+- **修复**：新增 `resolveSessionInjection(config, ctx)`（探 `config.sessionModel` / `ctx.sessionModel` / `ctx.llm.sessionModel`）
+  与 `buildSessionCloudConfig(config, ctx)`；同时满足「注入会话模型 + `cloudModelAutoSession!==false`
+  + 用户无自有 apiKey + provider 非用户显式选择」时，在**配置构建层**显式置 `cloudModelEnabled:true`
+  并把 provider 归一为 `session`（`cloud-model.mjs:441`）。`index.mjs` 的 `apply()` 改为消费该构建结果并写启动日志 `sessionLog`。
+- **语义澄清**（Config 描述同步改写）：`cloudModelEnabled` = 自有云模型开关，与会话解耦；
+  **`cloudModelAutoSession` 是会话模型的唯一开关**（`false` 即完全关闭，理由写入 `session.reason`）。
+- **验收**：`scripts/test_session_activation.mjs` **31 PASS / 0 FAIL**——含透传三路径、默认配置下激活、
+  **未修复路径的回归护栏**（证明旧写法确实返回 `enabled=false`，防回退）、尊重用户显式选择、
+  以及 stub 会话模型下的**端到端拆解/结论文案 + L2 补分**、`cost_bearer=user-session`。
+
+#### F-1 爻序形状容错（原 E-1 崩溃点）
+- `quad-hexagram.mjs` 新增 `hexOrderOf(script)`，返回 `{order, status, note}`：
+  `declared` / `fallback:domains` / `fallback:domains-padded` / `sancai` 四态**可审计**（旧 `activeOrder` 保留为 6 项兼容包装）。
+- 对象形状 `hex_order:{lower,upper}`、长度≠6 等畸形输入**不再抛错**；`structure.hex_order` 落状态与说明。
+
+#### F-2 / F-3 / F-7 批量脚本补齐 v2 与分级口径
+- `scripts/divine_batch_stocks.mjs`：新增 `--script`（支持 `stock-trend-v2`）、`--ci-grouping`、
+  `--strong-override`、`--no-fine-map`；v2 走 `signalsToInputsV2 + FINE_MAP`，域数进卦域改取 `hex_order`。
+- 每条结果新增 `verdict_grade` / `verdict_margin` / `veto_score_conflict` / `quad_hexagram` /
+  `stratum` / `stratum_used` / `stratum_n` / `stratum_reason`；汇总新增 `quad_kinds`、
+  `quad_coverage`、`veto_borderline`、`stratum_audit`。
+- **E-8 修复**：`engine` 字段不再写死 `v0.5.0`，改为动态读 `package.json`（`ENGINE_VERSION`）。
+- 分层可解释性：`baselines.mjs` 新增 `stratumMetaOf(baselines, quote)` → `{stratum, n, used, reason}`
+  （`stratum-not-calibrated` / `n<20` / `null`），**回落总体必带理由**。
+
+#### F-4 否决策略证据化 + 骑墙标记
+- 剧本侧加 `veto_notes`（384：policy `proxy-exempt`，豁免 13 项代理量，`5/56 → 34/56（60.7%）`；
+  v2：`exempt_subdomains FX02/XX06`，豁免 12 项），把「为什么代理量不该一票否决」写进产物而非口头。
+- 新增 `applyStrongOverride(script, 'include-proxies')`：把 id 以 `01` 结尾的检查点恢复为强关联并打 `veto_override` 标记，
+  **v2 强关联 204 → 216**（补回 12 个代理项）；`tools/yijing/divine.mjs` 新增 `strongOverride` 参数。
+- `aggregator.mjs` 新增 `veto_score_conflict`（一票否决 ∧ 连续分 ≥ 通过线 = 「骑墙」）。
+  **verdict 三值不变**，仅为排序/复核提供信号。
+
+#### F-5 阈值来源可选
+- `resolveQuadHexagram` 新增 `thresholdBasis: 'baseline' | 'absolute'`（默认 `baseline`，行为不变）；
+  `structure.threshold_basis` 落盘，`quadText` 追加编码口径行；`divine.mjs` 的 `hexEncoding:'absolute'` 直通。
+
+#### F-6 多日滚动校准
+- 新增 `adapters/quote-history.mjs`：日 K 适配层。**踩坑记录**：`fqkline/get` 已被腾讯 WAF 拦截（返回 501 HTML），
+  改用 `newfqkline/get`；并加 HTML/非 JSON 响应守卫（明确报 `non-json-response(waf/blocked)`，不用 0 冒充）。
+  首根无前收盘 → `pct=null`（不伪造）。
+- `calibrate_stock_baselines.mjs` 新增 `--days N`：历史日快照（末根与实时重复，故取「除末根外」）+ 当日全字段实时快照。
+- **实测（60 只 × 5 日 = 300 样本）**：`baselines-stock-v2-d5.json`，四卦 di 32/si 26/ci 16/xi 13，
+  数据丰度 4.0% → 脚本**主动告警**：多日提升的是层样本量，单样本信息量反而下降，
+  **四卦分组基线仍建议用全字段快照校准**（不把「样本多」包装成「更好」）。
+
+#### F-8 canonical 爻序规范 + 历史卦象迁移
+- 新增 `scripts/migrate_hex_order.mjs`：canonical = 剧本声明 `hex_order`，否则三才切分（di[:3]+tian[:3]）；
+  输出 `old_order_verified` 与 `changed_to_canonical`，阈值来源标注 `log:batch-quantile` 或 `fallback:absolute-0.5`。
+  （`dictionary` 口径 = 记录到的**全部**域码排序取前 6——按实现推导，非手写常量。）
+
+#### F-9 四连卦卦③ 语义分组
+- `subfamily-map.mjs` 新增 `SUBDOMAIN_V2_FAMILY`（36 个 v2 分域 → L/T/S/M/R/C）、`familyOfV2(code)`
+  （未收录返回 `null`，**不猜**）、`assertV2FamilyCoverage` 覆盖自检。
+- `ciGrouping: 'position' | 'semantic'`：语义模式下卦③ 按**业务族**分组而非子域位序。
+- **实测（400 只）**：`baselines-stock-v2-semantic.json`，四卦 di 56/si 51/**ci 28**/xi 29
+  （位置分组 ci 31）。**诚实结论**：语义分组卦种略少（家族合并本就减少组合数），
+  换来的分组语义可解释，不是「又涨了」的那种改进。
+
+#### F-10 LLM 批量补分与并发指南
+- 新增 `lib/yijing/concurrency.mjs`：`mapLimit`（**按输入顺序返回**、单条失败不炸整批、`limit<1` 退化为串行）、
+  `promptsPerStock`、`estimateLlmBatch`、`renderEstimateTable`（中文按显示宽度对齐）。
+- 新增 `examples/llm-batch-concurrency.mjs`：**默认全 stub，零网络零费用**，演示「两段式」
+  （非 LLM 段有界并发 + LLM 段串行过门）与提速优先级；支持 `--stocks/--level/--per-minute/--concurrency/--estimate-only`。
+- 新增 `docs/LLM批量补分与并发指南.md`，README / SKILL.md 同步进成本表。
+- **核心结论（写死在文档与 `estimateLlmBatch.note` 里）**：速率门是**进程内全局**滑动窗口（默认 10/min），
+  `runLlmScoring` 内部串行过门 ⇒ **并发度提高不提升 LLM 吞吐，只延长队列**。
+  提速优先级：放宽速率门 → L3 降 L2 → 不开 LLM 用 P2 → 并发（仅加速非 LLM 段）。
+  成本表：L3 56 只 ≈3.4 小时、400 只 ≈24 小时（默认门）。
+
+#### 回归口径
+| 套件 | 结果 |
+|---|---|
+| `scripts/verify.mjs` | PASS |
+| `scripts/runtime-check.mjs` | PASS |
+| 16 个既有 `test_*.mjs` | 全绿（含 hexagram / quad / rate_limit / llm_scoring / stock_inputs / fine_map 等） |
+| `scripts/test_session_activation.mjs`（新增） | 31 PASS / 0 FAIL |
+| `scripts/test_v090_features.mjs`（新增） | **79 PASS / 0 FAIL** |
+
+## 0.8.1 (2026-10-22)
+### P2 规则→子域名精映射 + 有条件可行分级 + LLM 费用承担方接线
+
+> 定位：v0.8.0 三项挂起项的本轮落地——① 无 LLM 部分激活卦③（P2）；② 有条件可行分级；
+> ③ LLM 补分费用默认走用户 DSH 会话模型。1296 剧本仍默认不启用；384 行为零触（15 套件全绿）。
+
+- **P2 规则→子域名精映射（新 `lib/yijing/subdomain-fine-map.mjs`）**
+  - 64 条旧子域 → v2「分域×子域位」语义映射（分域归属严格沿用 MIGRATION_MAP，A/B 实测裁决不变）；
+    `assertFineMapConsistency` 自检（分域一致/子域位 1-6/64 全覆盖），`describeFineMap` 人读审计表。
+  - `adapters/stock-inputs.mjs` `signalsToInputsV2` 增 `fineMap` 参数：信号落子域粒度（同格取均值），
+    未命中子域诚实 NA；`divine.mjs` 新增 `fineMap` 参数（v2 默认 true，`false` 回落 L2 铺开 A/B 对照）。
+  - **实测**（400 只同源重校准，seed 20261022）：卦③ **2 → 31 种**、卦④ 16 → 29 种、JS 阳率 69.5% → 58.8%
+    （更近满熵）；数据丰度 density 8.6%（诚实 NA）；基线重写 `baselines-stock-v2.json`，
+    旧 L2 粒度版归档 `baselines-stock-v2-l2.json`（仅对照，注明 provenance）。
+  - 校准脚本新增 `--fine-map`（与运行期默认同口径才可混用）+ FINE_MAP 自检门 +
+    `meta.mean_data_density`（inputs_coverage 分母剔除 na 恒 100% 具误导性，以 density 为准）。
+- **「有条件可行」分级（`aggregator.mjs`）**
+  - 新增 `verdict_grade`：中间态 [0.5,0.75) 按中位 0.625 切「有条件可行·偏强/·偏弱」；
+    `verdict_margin`：距上一条通过线的带符号余量（否决 → null）。**verdict 原值不变（零回归）**。
+  - 透出：`divine.mjs` 紧凑输出、`report.mjs` 太极结论行；新 `scripts/test_verdict_grade.mjs`（15 断言）。
+- **LLM 费用承担方（`divine.mjs`，用户标注"最重要"）**
+  - 修复：LLM 补分路径此前未传 config 给 `callCloudModel`（只用模块级适配器，`model` 参数覆盖失效）——
+    现传 `effectiveConfig`，会话模型解析/按调用覆盖/闸门全部生效。
+  - 默认费用走**用户 DSH 会话当前模型**（`cloudModelAutoSession` 默认开：Runtime 注入 sessionModel
+    且无自有 Key 即自动启用）；`quoteMeta.llm_scoring.endpoint` 回报
+    `kind/provider/model/via/cost_bearer`（user-session / plugin-config / none）。
+  - 无可用端点时跳过 36 次必然 null 的请求（省速率闸排队），诚实标注 `reason:'no-endpoint'`。
+  - `llmLevel` 参数文档补费用说明；SKILL/README 同步。
+- **L3 实测（端点可达性诚实结论）**：管理服务器 100.116.218.39:5000 **网络可达**（Tailscale，根 200）
+  但 `/api/llm/score` 与 `/health` 均 **404（服务未部署）**——真实客户端冒烟被阻塞在服务部署而非网络。
+  改用确定性桩会话模型经真实 session 通道端到端验证（`output/llm_l3_p2_e2e.mjs`，12 只真实行情）：
+  L3 = 36 prompt / 1296 填充 / +720 补分 / 卦③ **1 → 5 种**（A=L2 坍缩 1、B=P2 无 LLM 4 种）；
+  cost_bearer=user-session 确认。**桩残余失真**：C/D verdict 系统性偏空（score 0.39-0.54）——与 P4
+  报告记载的模拟客户端偏空同款（个股偏置仅来自涨跌幅），不作市场结论。
+- 质量门：verify + **15 个测试套件全绿零回归**（新增 test_subdomain_fine_map 29 断言 /
+  test_verdict_grade 15 断言；384 golden 与 L2 金样逐位不变）。
+
 ## 0.8.0 (2026-10-22)
 ### 阶段 2：1296 四层剧本 + LLM 子域级评分流水线（S1–S5）
 
