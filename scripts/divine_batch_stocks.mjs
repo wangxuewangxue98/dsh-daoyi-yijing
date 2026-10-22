@@ -23,6 +23,7 @@ import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpo
 import { evaluate } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript, quantileThresholds } from '../lib/yijing/hexagram.mjs'
 import { fetchSignalsForStocks, RULES_TEXT } from '../adapters/quote.mjs'
+import { signalsToInputs } from '../adapters/stock-inputs.mjs'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -147,22 +148,10 @@ function buildInputs(stock, extraSignals = [], secAvg = sectorAvg) {
   }
   const signals = mergeSignals(base, extraSignals)
 
-  const activeKeys = new Set(signals.map((s) => `${s.code}${String(s.subIdx + 1).padStart(2, '0')}`))
-  const inputs = {}
-  const naIds = []
-  for (const cp of db.checkpoints) {
-    const key = cp.id.slice(0, 4) // 如 JS01
-    if (!activeKeys.has(key)) {
-      naIds.push(cp.id)
-      continue
-    }
-    const sig = signals.find((s) => `${s.code}${String(s.subIdx + 1).padStart(2, '0')}` === key)
-    const ci = Number(cp.id.slice(5, 7)) - 1 // 侧面序号 0..5
-    inputs[cp.id] = Number(
-      clamp(0.5 + sig.delta * ASPECT_COEFS[ci] + ASPECT_BIAS[ci], 0.02, 0.98).toFixed(4),
-    )
-  }
-  return { inputs, naIds, signals }
+  // v0.6.1：铺开口径统一走 adapters/stock-inputs.mjs（此前本文件内重复实现同一套
+  // ASPECT_COEFS/BIAS 循环，两处漂移会导致基线分位数与对话单只调用不可比）。
+  // 离线 base 信号仍在本文件生成（CSV 行的 pct/sector/flag → 合成信号）。
+  return { signals, ...signalsToInputs(signals, db) }
 }
 
 // ===== 批量推演 =====

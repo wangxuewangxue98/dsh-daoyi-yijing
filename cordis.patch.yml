@@ -28,6 +28,9 @@
         freeLlmPerMinute: 10                  # 免费 LLM 每分钟速率上限（滑动窗口60s）；超出排队等待，不拒绝不降级；0=不限制
         freeLlmDailyLimit: 0                   # 每日硬上限（可选兜底，默认0=关闭）；>0 时作为每日总闸，用尽降级离线模板
         freeDailyLimit: 0                      # （兼容别名，deprecated）设置后等同 freeLlmDailyLimit
+        # ---- 股票行情自动适配（v0.6.0）----
+        stockQuoteEnabled: true                # stock-trend 剧本下自动拉腾讯行情构建 384 爻 inputs（divine 解析到代码时）
+        stockBaselinesPath: ''                 # 卦象编码基线表路径（留空=内置 baselines-stock.json；基线模式爻义=相对市场中位）
         # ---- 合规：脱敏回传默认关 ----
         telemetryEnabled: false                # 默认关闭，绝不外发决策内容/参数/密钥
         knowledgeBaseUrl: ''                   # 在线知识库入口（可选）

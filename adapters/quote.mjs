@@ -69,6 +69,25 @@ export const RULES_TEXT = [
 
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x))
 
+/**
+ * 腾讯响应为 GBK 字节流；此前用 res.text()/stdout 字符串拼接按 UTF-8 解码，
+ * 中文名称变成「上证指"乱码（数字字段是 ASCII 所以不暴露）。此处统一按 GBK 解码。
+ * Node 22 内置 full-icu 支持 'gbk'；若运行时不支持则原样回退（数字字段不受影响）。
+ */
+export function decodeTencentBytes(data) {
+  if (data == null) return ''
+  if (typeof data === 'string') return data
+  try {
+    return new TextDecoder('gbk').decode(data)
+  } catch {
+    try {
+      return new TextDecoder('gb18030').decode(data)
+    } catch {
+      return Buffer.from(data).toString('utf8')
+    }
+  }
+}
+
 /** 默认 HTTP 取数（全局 fetch + 超时；代理环境下请注入 createCurlFetcher({proxy})） */
 async function defaultHttpGet(url, timeoutMs) {
   if (typeof fetch !== 'function') throw new Error('fetch-unavailable')
@@ -76,6 +95,9 @@ async function defaultHttpGet(url, timeoutMs) {
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     const res = await fetch(url)
+    // ⚠ 必须取字节流再按 GBK 解码：res.text() 会按 UTF-8 解，中文名全乱码。
+    //   兼容只实现了 text() 的 Response stub（测试/自建代理）。
+    if (typeof res.arrayBuffer === 'function') return decodeTencentBytes(await res.arrayBuffer())
     return await res.text()
   } finally {
     clearTimeout(timer)
@@ -92,15 +114,16 @@ export function createCurlFetcher({ proxy, timeoutMs = 10000 } = {}) {
       const args = ['-s', '-m', String(Math.max(1, Math.ceil(timeoutMs / 1000)))]
       if (proxy) args.push('-x', String(proxy))
       args.push(String(url))
-      let out = ''
+      let out = []
       let err = ''
       try {
         const p = spawn('curl', args, { stdio: ['ignore', 'pipe', 'pipe'] })
-        p.stdout.on('data', (d) => (out += d))
+        // ⚠ 收 Buffer 不收 string：GBK 字节流被 JS 字符串拼接即按 UTF-8 误解码成乱码
+        p.stdout.on('data', (d) => out.push(Buffer.isBuffer(d) ? d : Buffer.from(d)))
         p.stderr.on('data', (d) => (err += d))
         p.on('error', (e) => reject(new Error(`curl-spawn-failed: ${e.message}`)))
         p.on('close', (code) =>
-          code === 0 ? resolve(out) : reject(new Error(`curl exit ${code}: ${err.slice(0, 120)}`)),
+          code === 0 ? resolve(decodeTencentBytes(Buffer.concat(out))) : reject(new Error(`curl exit ${code}: ${err.slice(0, 120)}`)),
         )
       } catch (e) {
         reject(new Error(`curl-spawn-failed: ${e.message}`))
@@ -286,6 +309,8 @@ export async function fetchQuotes(codes, opts = {}) {
     } catch (e) {
       return { quotes: new Map(unique.map((c) => [c, null])), fetched, error: `fetch-failed: ${e && e.message}` }
     }
+    // 注入 fetcher 若直接回 Buffer（代理/自定义源常见），按 GBK 统一解码
+    text = decodeTencentBytes(text)
     if (typeof text !== 'string' || !text.trim()) {
       return { quotes: new Map(unique.map((c) => [c, null])), fetched, error: 'empty-response' }
     }
@@ -499,6 +524,9 @@ export async function fetchIndexQuotes(symbols = DEFAULT_INDEX_SYMBOLS, opts = {
   } catch (e) {
     return { quotes, indexContext: null, error: `fetch-failed: ${e && e.message}` }
   }
+  // 注入 fetcher 若直接回 Buffer（代理/自定义源常见），按 GBK 统一解码；
+  // 漏掉这一步会让 indexContext 静默变 null → HY 宫（依赖指数 sectorPct）整宫 NA
+  raw = decodeTencentBytes(raw)
   if (typeof raw !== 'string' || !raw.trim()) return { quotes, indexContext: null, error: 'empty-response' }
   for (const line of raw.split(';')) {
     const q = parseTencentQuote(line)
@@ -591,4 +619,5 @@ export default {
   quoteToSignals,
   fetchSignalsForStocks,
   createCurlFetcher,
+  decodeTencentBytes,
 }

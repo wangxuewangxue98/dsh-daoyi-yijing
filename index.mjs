@@ -75,6 +75,12 @@ export const Config = Schema.object({
   freeDailyLimit: Schema.number().default(0)
     .description('（兼容别名，deprecated）设置后等同 freeLlmDailyLimit'),
 
+  // ---- 股票行情自动适配（v0.6.0）----
+  stockQuoteEnabled: Schema.boolean().default(true)
+    .description('stock-trend 剧本下自动拉腾讯实时行情构建 384 爻 inputs（divine 传/提取到股票代码时）；false=关闭自动行情'),
+  stockBaselinesPath: Schema.string().default('')
+    .description('卦象编码基线表路径（JSON，缺省用内置 baselines-stock.json）；留空=内置。基线模式爻义=相对市场中位偏强/偏弱'),
+
   // ---- 合规：脱敏回传默认关 ----
   telemetryEnabled: Schema.boolean().default(false).description('脱敏回传默认关'),
   knowledgeBaseUrl: Schema.string().default('').description('在线知识库入口（可选）'),

@@ -2,6 +2,8 @@
 import { evaluate } from '../../lib/yijing/reviewer.mjs'
 import { getBuiltinScript } from '../../lib/yijing/checkpoints.mjs'
 import { loadCustomScript } from '../../lib/yijing/registry.mjs'
+import { extractCodes, buildStockInputs } from '../../adapters/stock-inputs.mjs'
+import { loadBaselines, thresholdsFromBaselines } from '../../lib/yijing/baselines.mjs'
 
 export const TOOL_PARAMS = {
   matter: {
@@ -19,7 +21,26 @@ export const TOOL_PARAMS = {
   inputs: {
     type: 'object',
     additionalProperties: true,
-    description: '可选：检查点取值覆盖（id→数值），缺值走阈值保守兜底（可审计，不造假）',
+    description:
+      '可选：检查点取值覆盖。支持两级——检查点精确 id（如 JB0101=0.7）或八宫 code 简写（如 JB=0.6，' +
+        '该域全部活跃检查点同值；LLM 打分回填即用此形态）。缺值走阈值保守兜底（可审计，不造假）',
+  },
+  symbols: {
+    oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
+    description:
+      '可选：股票代码（6 位，多个取第一个；也可省略——自动从 matter 里提取代码）。' +
+        'stock-trend 剧本下提供/提取到代码时自动拉腾讯实时行情构建 384 爻 inputs（免手工打分）',
+  },
+  useQuote: {
+    type: 'boolean',
+    description: '是否允许自动拉行情（默认 true，仅 stock-trend 剧本且解析到代码时生效；config.stockQuoteEnabled=false 可全局关）',
+  },
+  hexEncoding: {
+    type: 'string',
+    enum: ['auto', 'baseline', 'absolute'],
+    description:
+      '卦象编码阈值来源：auto（默认，行情路径用基线分位，其余绝对 0.5）/ baseline（强制基线，无则回落）/' +
+        'absolute（强制 0.5）。基线模式下爻义=「相对市场中位偏强/偏弱」',
   },
   detail: {
     type: 'boolean',
@@ -79,12 +100,96 @@ export async function runYijingDivine(args = {}, config = {}) {
     scriptArg = obj || config.defaultScript || 'motor-design'
   }
   const effectiveConfig = buildEffectiveConfig(config, args.model)
-  const result = await evaluate(matter, scriptArg || 'motor-design', {
-    inputs: args.inputs || {},
+
+  // ── inputs 三级来源解析（v0.6.0）：检查点精确 id > 八宫 code 简写 > 行情自动拉取 > 兜底 ──
+  const inputsIn = args.inputs && typeof args.inputs === 'object' ? args.inputs : {}
+  const domainCodes = new Set(((scriptArg && scriptArg.domains) || []).map((d) => d.code))
+  const hasCheckpointInputs = Object.keys(inputsIn).some((k) => !domainCodes.has(k))
+  const hasDomainInputs = Object.keys(inputsIn).some((k) => domainCodes.has(k))
+  let inputs = inputsIn
+  let scriptObj = scriptArg
+  let inputsSource = hasCheckpointInputs ? 'checkpoint' : hasDomainInputs ? 'domain' : 'none'
+  let quoteMeta = null
+  let hexThresholds = null
+  let hexEncoding = 'absolute'
+
+  // 行情自动路径：stock-trend + 无检查点级 inputs + 解析到代码 → 拉腾讯行情构建 inputs
+  const isStockScript = scriptArg && scriptArg.script_id === 'stock-trend'
+  if (isStockScript && !hasCheckpointInputs && config.stockQuoteEnabled !== false && args.useQuote !== false) {
+    const raw = args.symbols ?? args.symbol ?? null
+    let codes = raw
+      ? (Array.isArray(raw) ? raw : String(raw).split(/[,\s，、]+/))
+      : extractCodes(matter)
+    codes = [...new Set(codes.map((c) => String(c).replace(/\D/g, '')).filter(Boolean))]
+    if (codes.length) {
+      try {
+        const { byCode, meta } = await buildStockInputs([codes[0]])
+        const hit = byCode.get(codes[0])
+        if (hit) {
+          inputs = hit.inputs
+          scriptObj = { ...scriptArg, na: { domains: [], checkpoints: hit.naIds } }
+          inputsSource = 'quote'
+          quoteMeta = {
+            code: codes[0],
+            name: hit.quote.name,
+            price: hit.quote.price,
+            pct: hit.quote.pct,
+            active_domains: hit.activeDomains,
+            rules: hit.signals.map((s) => s.rule),
+            fetched: meta.fetched,
+            sector_proxy: meta.sector_proxy,
+            index_error: meta.indexError,
+          }
+          if (args.hexEncoding !== 'absolute') {
+            const bl = loadBaselines('stock-trend', { file: config.stockBaselinesPath || undefined })
+            if (bl) {
+              hexThresholds = thresholdsFromBaselines(bl, 'p50')
+              hexEncoding = 'baseline'
+            }
+          }
+        } else {
+          quoteMeta = { code: codes[0], error: meta.error || 'quote-missing', fetched: meta.fetched }
+        }
+      } catch (e) {
+        quoteMeta = { code: codes[0], error: String((e && e.message) || e) }
+      }
+    }
+  } else if (hasDomainInputs && args.hexEncoding === 'baseline') {
+    // LLM/手工宫级打分语义为「绝对自评」→ 默认不走市场基线；显式要求时才用
+    const bl = loadBaselines(scriptArg?.script_id || '', { file: config.stockBaselinesPath || undefined })
+    if (bl) {
+      hexThresholds = thresholdsFromBaselines(bl, 'p50')
+      hexEncoding = 'baseline'
+    }
+  }
+
+  const result = await evaluate(matter, scriptObj || 'motor-design', {
+    inputs,
+    hexThresholds,
     reportStyle: args.reportStyle || config.reportStyle || 'classic',
     config: effectiveConfig,
   })
-  if (args.detail) return result
+
+  // 兜底退化显式告警（v0.6.0）：杜绝「8/8 同卦」无感发生
+  let notice = (result.llm && result.llm.notice) || null
+  const cov = result.inputs_coverage || {}
+  if (Array.isArray(cov.unmatched) && cov.unmatched.length) {
+    const extra =
+      `inputs 有 ${cov.unmatched.length} 个键未匹配本剧本任何检查点/宫（${cov.unmatched.slice(0, 6).join(',')}${cov.unmatched.length > 6 ? '…' : ''}），已忽略；` +
+      `本剧本宫码为 ${[...domainCodes].join('/')}，可用 yijing_factor_prompt 取正确打分表`
+    notice = notice ? notice + '\n' + extra : extra
+  }
+  if (inputsSource === 'none') {
+    const extra =
+      (quoteMeta && quoteMeta.error
+        ? `行情拉取失败（${quoteMeta.error}）`
+        : '未提供 symbols / inputs') + '，384 爻走缺值兜底，结果不具备个股区分度'
+    notice = notice ? notice + '\n' + extra : extra
+  }
+
+  if (args.detail) {
+    return { ...result, quote: quoteMeta, inputs_source: inputsSource, hex_encoding: hexEncoding }
+  }
   // 紧凑输出（对齐 l0 聚合工具思路：只回结论 + 计数，绕开 DSH 2000 行截断）
   const out = {
     verdict: result.verdict,
@@ -96,9 +201,19 @@ export async function runYijingDivine(args = {}, config = {}) {
     sancai: Object.fromEntries(
       Object.entries(result.sancai).map(([k, v]) => [k, { score: v.score }]),
     ),
+    inputs: {
+      source: inputsSource,
+      coverage: result.inputs_coverage ? Number(result.inputs_coverage.coverage.toFixed(4)) : 0,
+      granularity: result.inputs_coverage ? result.inputs_coverage.granularity : 'none',
+      unmatched: result.inputs_coverage ? result.inputs_coverage.unmatched : [],
+    },
+    // 无任何有效输入 → 结论由缺值兜底产生，明确标注低置信（不得当作真实研判）
+    degraded: inputsSource === 'none' || (result.inputs_coverage || {}).coverage < 0.5,
+    hex_encoding: { source: hexEncoding, baseline_used: hexEncoding === 'baseline' },
     llm: compactLlm(result.llm),
   }
-  if (result.llm && result.llm.notice) out.notice = result.llm.notice
+  if (quoteMeta) out.quote = quoteMeta
+  if (notice) out.notice = notice
   return out
 }
 

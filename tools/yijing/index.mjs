@@ -5,9 +5,11 @@ import { registerYijingScriptList, runYijingScriptList } from './script-list.mjs
 import { registerYijingScriptLoad, runYijingScriptLoad } from './script-load.mjs'
 import { registerYijingReport, runYijingReport } from './report.mjs'
 import { registerYijingModelList, runYijingModelList } from './model-list.mjs'
+import { registerYijingFactorPrompt, runYijingFactorPrompt } from './factor-prompt.mjs'
 
 export const YIJING_TOOL_NAMES = [
   'yijing_divine',
+  'yijing_factor_prompt',
   'yijing_script_list',
   'yijing_script_load',
   'yijing_report',
@@ -16,6 +18,7 @@ export const YIJING_TOOL_NAMES = [
 
 export async function registerYijingTools(ctx, config = {}) {
   await registerYijingDivine(ctx, config)
+  await registerYijingFactorPrompt(ctx, config)
   await registerYijingScriptList(ctx, config)
   await registerYijingScriptLoad(ctx, config)
   await registerYijingReport(ctx, config)
@@ -25,6 +28,7 @@ export async function registerYijingTools(ctx, config = {}) {
 
 export {
   runYijingDivine,
+  runYijingFactorPrompt,
   runYijingScriptList,
   runYijingScriptLoad,
   runYijingReport,

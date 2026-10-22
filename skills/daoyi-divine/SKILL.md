@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.5.2
+  version: 0.6.0
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -84,16 +84,57 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
 - **六爻位语义（v0.5.2）**：初爻 JS(基础·LSB) → 二爻 ZJ(内部) → 三爻 GZ(过渡) → 四爻 HG(外部) →
   五爻 HY(主导·君位) → 上爻 FX(极端·MSB)。股市指数与国际国内经济形势归 **HG 离·宏观面（四爻）**，
   且必须转成个股相对量（直接用指数绝对值会因批次内同值而判 frozen）。代理量子域**不具一票否决权**但照常计分。
+- **单事项触达 64 卦（v0.6.0，本版核心）**
+  - **参照系独立于本次调用**：卦象编码阈值默认取「全市场校准基线分位」
+    （`lib/yijing/baselines.mjs` 读 `baselines-stock.json`，缺省 p50）。爻义从「绝对分 ≥0.5」
+    变为「**相对市场中位偏强/偏弱**」——一只股票资金面 0.62 对比全市场中位 0.48 → 阳，下只 0.41 → 阴。
+  - **校准**：`node scripts/calibrate_stock_baselines.mjs --n 400`（400 只随机样本）。
+    实测卦象 **48/64 种**（绝对阈值 8/64、v0.5.2 批次分位 28/64）；基线内含 `yao_yang_ratio`
+    与 `hexagram_distinct_in_sample`，「满熵」可审计。
+  - **对话内自动拉行情**：stock-trend 剧本下 `yijing_divine` 传 `symbols`（或让 `matter` 里带 6 位代码）
+    即自动构建 384 爻 inputs（`adapters/stock-inputs.mjs`，与校准脚本同口径）；
+    `useQuote:false` 或 `stockQuoteEnabled:false` 可关。
+  - **`hexEncoding`**：`auto`（默认：行情路径有基线即用）/ `baseline` / `absolute`。
+- **`yijing_factor_prompt`：L1→L7 拆解由对话大模型完成（v0.6.0）**
+  - 流程：本工具取「八宫打分表 prompt」→ 当前对话大模型按 prompt 填 JSON → 扁平化为
+    `{"EM":0.6,…}` 作为 `inputs` 传给 `yijing_divine`。LLM 打分**第一次真正驱动 384 爻**
+    （此前 `decomposition_json` 只被打印、不产分数）。
+  - 这条路径同时绕开「插件内自动调会话模型」的结构性阻塞（当前 DSH 内核无 `sessionModel` 服务）。
+  - `inputs` 支持**宫级简写**（`{"EM":0.72}` = 该域全部活跃检查点同值，8 个数驱动全引擎）；
+    宫级取值走归一化语义 `>0.5 为阳`（motor-design 阈值是温升 K/温度 ℃/`boolean[1,1]` 等工程量纲，
+    直接比阈值会全阴）；检查点精确 id 优先，仍走工程量纲阈值。
+  - **宫码因剧本而异**：motor-design 是 `EM/TH/ME/MT/EF/COST/MANU/RELIAB`，
+    stock-trend 是 `JB/JS/ZJ/XX/HY/HG/GZ/FX`。传错码会被 `unmatched` 点名并 `degraded`。
+- **输入可观测性（v0.6.0）**：`inputs_coverage` 现含 `unmatched`（不匹配任何检查点/宫的键）与
+  `granularity`；紧凑输出有 `degraded`（无有效输入或覆盖率 <50%）。**错宫码/缺输入不再静默出「100% 可行」**。
+- **卦象显式字段（v0.6.0）**：`evaluate()` 返回值新增 `hexagram`
+  （`name/moving_yao/changed/yaos/threshold_source/thresholds`），不再只嵌在文案里。
+- **腾讯响应 GBK 修复（v0.6.0）**：`decodeTencentBytes()` 统一按 GBK 解码（此前 `res.text()`
+  按 UTF-8 解 → 中文名全乱码，数字字段是 ASCII 所以不暴露）。
 - **离线/断网降级**：未配置或调用失败（401/超时/断网）时，L1→L7 返回结构化因数清单（剧本骨架），
   L1 文案走确定性模板（64 卦判词头 + 动爻变卦 + 八宫明细），推演结论依然成立、verdict 不受影响。
 
 ## 工具用法
-- `yijing_divine(matter, script?, inputs?, detail?, model?)`：主入口。给出可行/有条件可行/不可行结论；
-  `model` 可按调用覆盖模型（厂商 id / 自定义模型 name / session）。
+- `yijing_divine(matter, script?, inputs?, symbols?, useQuote?, hexEncoding?, detail?, reportStyle?, model?)`：主入口。给出可行/有条件可行/不可行结论；
+  `model` 可按调用覆盖模型（厂商 id / 自定义模型 name / session）；
+  `symbols`（股票代码，多个取第一个，也可省略自动从 matter 提取）在 stock-trend 下触发**自动拉行情**；
+  `hexEncoding` 控制卦象阈值来源（`auto`/`baseline`/`absolute`）。
+- `yijing_factor_prompt(matter, script?)`：生成八宫打分表 prompt（L1→L7 拆解用）。
+  拿 prompt 给当前对话大模型填 JSON → 扁平化为 `{宫code: 分数}` 回传 `yijing_divine` 的 `inputs`。
 - `yijing_script_list()`：列出内置与自定义剧本。
 - `yijing_script_load(script_json)`：加载自定义剧本（JSON）。
 - `yijing_report(matter, script?, inputs?, model?)`：生成详细报告并回灌 `yijing_gray_logs/`。
 - `yijing_model_list()`：列出可选模型（6 厂商预设 + 自定义清单 + session）、当前选择与今日 LLM 额度快照。
+
+### 配置项（cordis.patch.yml / index.mjs）
+| 字段 | 默认 | 说明 |
+|---|---|---|
+| `stockQuoteEnabled` | `true` | stock-trend 下 `yijing_divine` 自动拉腾讯行情构建 inputs 的总开关 |
+| `stockBaselinesPath` | `''` | 卦象编码基线表路径；留空用内置 `baselines-stock.json` |
+| `freeLlmPerMinute` | `10` | 免费 LLM 每分钟速率上限（60s 滑动窗口），超出排队等待 |
+| `freeLlmDailyLimit` | `0` | 每日硬上限（可选兜底，0=关闭） |
+| `freeQuotaEnabled` | `true` | 本地额度闸门总开关 |
+| `cloudModelAutoSession` | `true` | Runtime 注入 sessionModel 且无自有 Key 时自动借用会话模型 |
 
 ## 内置剧本
 - `motor-design`：电机电磁设计·万事决（真实 384 检查点，226 活跃 / 158 NA）。

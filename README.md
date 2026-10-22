@@ -37,9 +37,27 @@ node scripts/divine_stock_600711.mjs   # 盛屯矿业(600711) 一个月涨跌推
 安装后对模型说「推演：我要不要接这个 200kW 电机外包项目」即可触发 `yijing_divine`。
 
 ## 工具
-- `yijing_divine` 主入口（支持 `model` 参数按调用覆盖模型）
+- `yijing_divine` 主入口（支持 `model` 参数按调用覆盖模型；`symbols` 触发股票行情自动接入；`hexEncoding` 控制卦象阈值来源）
+- `yijing_factor_prompt` 生成八宫打分表 prompt（L1→L7 拆解交给对话大模型，打分回填 `inputs`）
 - `yijing_script_list` 列剧本 · `yijing_script_load` 加载自定义剧本 · `yijing_report` 详报
 - `yijing_model_list` 列全部可选模型 + 当前选择 + 今日 LLM 调用额度快照（只读，不消耗额度）
+
+## 单事项如何触达 64 卦（v0.6.0）
+「64 卦 → 1 卦」的映射一直都在（8 宫分 → 二值化 6 爻 → 64 选 1 + 动爻），缺的是**单次调用的熵**：
+绝对阈值 0.5 会让各宫分挤在同一侧 → 恒出乾系。本版给单事项一个**独立于本次调用的参照系**：
+
+| 路径 | 用法 | 效果 |
+|---|---|---|
+| **股票（自动）** | `yijing_divine { matter: "贵州茅台本周涨跌", script: "stock-trend", symbols: ["600519"] }` | 自动拉腾讯行情构建 384 爻 inputs；阈值取全市场基线分位 → 单只即可落进 64 卦任意一格 |
+| **通用事项（LLM）** | ① `yijing_factor_prompt` 拿打分表 prompt ② 对话大模型填 JSON ③ 扁平化为 `inputs` 回传 `yijing_divine` | L1→L7 拆解真正由 LLM 完成，且打分**驱动** 384 爻（此前只产文案不产分数） |
+| **批量/校准** | `node scripts/divine_batch_stocks.mjs --live` · `node scripts/calibrate_stock_baselines.mjs --n 400` | 批次内分位 / 生成基线表 |
+
+- 基线表 `lib/yijing/baselines-stock.json`（随包发布）：各宫 p25/p50/p75 + 每爻阳率 + 样本内卦种数。
+  400 只随机样本实测 **48/64 种**（绝对阈值 8/64、批次分位 28/64）。
+- 爻义随之变为「**相对市场中位偏强/偏弱**」（如 JS 爻阳 = 技术面强于市场中位），比绝对阈值更有信息量。
+- 宫级简写：`inputs: {"EM":0.72}` 即该域全部活跃检查点同值（8 个数驱动全引擎），走归一化语义 `>0.5 为阳`。
+- 可观测性：输出带 `inputs_coverage`（含 `unmatched` 未匹配键名单）与 `degraded` 低置信标记——
+  **传错宫码或没给输入，不会再静默输出「100% 可行」**。
 
 ## 云模型接线（v0.3.4 已接通真实 LLM）
 **未配置时完全离线**：分解返回结构化因数清单、结论走确定性模板（断网也能跑，verdict 不受影响）。

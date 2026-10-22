@@ -9,6 +9,7 @@ import {
   fetchQuotes,
   quoteToSignals,
   createCurlFetcher,
+  decodeTencentBytes,
   RULES_TEXT,
 } from '../adapters/quote.mjs'
 import { runBatch, mergeSignals, STOCKS } from './divine_batch_stocks.mjs'
@@ -238,6 +239,36 @@ ok(parseTencentQuote(42) === null, '非字符串 → null')
   ok(!quoteToSignals(cheap).some((s) => s.code === 'HY'), '不提供 sectorPct → HY01 不激活')
 }
 ok(RULES_TEXT.length >= 6, `规则文本导出（${RULES_TEXT.length} 条）`)
+
+// ── 3b. GBK 解码（v0.6.0 修复：腾讯响应是 GBK，按 UTF-8 解会把中文名变乱码）──
+{
+  // 「工商银行」GBK 编码 = b9a4 c9cc d2f8 d0d0（2026-10-22 穷举 GBK 空间反查，勿凭记忆改）
+  const gbkBytes = Buffer.from([0xb9, 0xa4, 0xc9, 0xcc, 0xd2, 0xf8, 0xd0, 0xd0])
+  ok(decodeTencentBytes(gbkBytes) === '工商银行', 'GBK 字节 → 工商银行（decodeTencentBytes）')
+  ok(decodeTencentBytes('已是字符串') === '已是字符串', 'string 输入原样返回（不重复解码）')
+  ok(decodeTencentBytes(null) === '', 'null → 空串')
+  // 乱码现场复现与修复：v_sh601398="51~<GBK名>~..." 整行按 GBK 解
+  const rawLine = `v_sh601398="51~${decodeTencentBytes(gbkBytes)}~601398~8.58~8.60~8.62~100~90~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~-0.02~-0.23~8.71~8.45~123456~106500~0.53~6.2~1.45~8000~10000~8.50~8.70~1.05~200~8.55~6.2~7.1";`
+  const parsedGbk = parseTencentQuote(rawLine)
+  ok(parsedGbk && parsedGbk.name === '工商银行', 'GBK 整行解析 → name=工商银行（非乱码）')
+  // 若按 UTF-8 误解码（旧行为），名会变成含替换符的乱码
+  const mojibake = Buffer.from([0xb9, 0xa4]).toString('utf8')
+  ok(!mojibake.startsWith('工'), `旧行为确认会乱码（对照组：${JSON.stringify(mojibake)}）`)
+  // 注入 fetcher 回 GBK 字节流（模拟真实腾讯响应）→ fetchQuotes 内部按 GBK 解
+  const tailFields =
+    '~601398~8.58~8.60~8.62~100~90~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~-0.02~-0.23~8.71~8.45~123456~106500~0.53~6.2~1.45~8000~10000~8.50~8.70~1.05~200~8.55~6.2~7.1'
+  const gbkLineBytes = Buffer.concat([
+    Buffer.from('v_sh601398="51~', 'utf8'),
+    gbkBytes,
+    Buffer.from(`${tailFields}";`, 'utf8'),
+  ])
+  const bufFetcher = async () => gbkLineBytes
+  const bufRes = await fetchQuotes(['601398'], { fetcher: bufFetcher })
+  ok(bufRes.fetched === 1 && bufRes.quotes.get('601398').name === '工商银行', 'fetcher 回 GBK Buffer → 按 GBK 解码')
+  // 反向对照：同一份字节若按 UTF-8 误解码（旧行为）→ 必不等
+  const utf8Misread = Buffer.concat([gbkLineBytes]).toString('utf8')
+  ok(!utf8Misread.includes('工商银行'), '旧行为（UTF-8 误解码）对照：确实解不出工商银行')
+}
 
 // ── 4. fetchQuotes（注入 fetcher，不打网络）──
 {

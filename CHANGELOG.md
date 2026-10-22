@@ -1,5 +1,73 @@
 # CHANGELOG
 
+## 0.6.0 (2026-10-22)
+### 单事项触达 64 卦：行情接入 + 全市场基线 + LLM 打分回填
+
+> 动机：v0.5.2 把「卦空间上限」开到 64，但**单次调用**仍触达不到——`quantileThresholds` 是
+> 「批次内」分位数，对话里推 1 只/1 件事没有批次 → 回落绝对 0.5 → 各宫分挤同一侧 → 恒出乾系。
+> 2026-10-22《8 只股票测试记录分析》实测：`yijing_divine` 不传 inputs 时 8/8 全「乾为天/100%/可行」。
+> 本版给单事项一个**独立于本次调用的参照系**，并把 LLM 拆解真正接进评分。
+
+- **1) 阶段 1 · 工具层接行情（P0-1）**
+  - 新增 `adapters/stock-inputs.mjs`：把「腾讯行情 → 子域信号 → 384 爻 inputs」的口径从批处理脚本抽出共享，
+    `tools/yijing/divine.mjs`（对话单只）与 `scripts/calibrate_stock_baselines.mjs`（校准）**同源**——基线分位数才对单只调用有可比性。
+  - `yijing_divine` 新增 `symbols` 参数：stock-trend 剧本下提供或从 `matter` 自动提取 6 位代码 → 自动拉行情；
+    `useQuote=false` 可关；`config.stockQuoteEnabled=false` 全局关。
+  - 实测单只（15 只手选大盘股）卦象 **1 种 → 6~8 种**，判决分化为「可行/有条件可行」多档。
+
+- **2) 阶段 2 · 全市场校准基线（单事项的参照系）**
+  - 新增 `lib/yijing/baselines.mjs` + `lib/yijing/baselines-stock.json`（随包发布）：
+    各宫 p25/p50/p75，阈值默认取 **p50** → 爻义从「绝对分 ≥0.5」变为「**相对市场中位偏强/偏弱**」。
+  - 新增 `scripts/calibrate_stock_baselines.mjs --n 400`：一次拉全市场样本、逐只确定性推演、写基线并回验覆盖。
+    **实测 400 只随机样本：卦象 48/64 种**（v0.5.2 同口径 28/64，绝对阈值 8/64）；每爻阳率 50%~70%。
+  - 基线自带 `meta.yao_yang_ratio`（每爻阳率）与 `hexagram_distinct_in_sample`，「满熵」声明可审计。
+  - `yijing_divine` 新增 `hexEncoding` 参数：`auto`（默认，行情路径有基线即用）/ `baseline` / `absolute`。
+
+- **3) 阶段 3 · `yijing_factor_prompt`：L1→L7 拆解真正由 LLM 完成**
+  - 新增工具 `yijing_factor_prompt`：返回「八宫打分表 prompt」（含打分语义、否决域提示、严格 JSON 要求、回填示例）；
+    对话中的大模型填好 JSON → 扁平化为 `{"EM":0.6,…}` 作为 `inputs` 传给 `yijing_divine` → **LLM 打分驱动 384 爻**。
+  - 这条路径同时绕开了「插件内自动调会话模型」的结构性阻塞（当前 DSH 内核不提供 `sessionModel` 服务，实测注入恒 pending），
+    且让 `decomposition_json` 第一次真正参与判定（此前只被打印，不产分数）。
+  - `inputs` 支持**宫级简写**：`{"EM":0.72}` 即该域全部活跃检查点同值（LLM 8 个数驱动全引擎）。
+  - 宫级取值走**归一化语义**（`origin='domain'` → `>0.5 为阳`）：motor-design 的阈值是温升 K/温度 ℃/`boolean[1,1]` 等工程量纲，
+    直接比阈值会全阴（实测 6 宫全否决、连「乐观」场景也判不可行）。默认 origin 仍走工程量纲阈值，两条路径显式解耦。
+
+- **4) 输入可观测性：错码/缺输入不再静默出「100% 可行」**
+  - `inputsCoverage` 重写：`provided` 按「活跃检查点被覆盖数」计，并新增 **`unmatched`** 名单
+    （传入的键既不匹配检查点 id 也不匹配宫 code —— 典型事故：给 motor-design 传 JB/JS/ZJ）。
+  - `yijing_divine` 紧凑输出新增 `degraded` 标记（无有效输入或覆盖率 <50% 即 true）与 `inputs.unmatched`；
+    notice 会直接给出本剧本正确宫码，并提示用 `yijing_factor_prompt` 取打分表。
+  - 回归实验：错宫码 → `degraded=true, coverage=0%, unmatched=[JB,JS,ZJ]`（旧实现照出「100% 可行」）。
+
+- **5) 卦象显式字段**
+  - `evaluate()` 返回值新增 `hexagram`：`{name, moving_yao, changed, yaos[6], threshold_source, thresholds}`。
+    此前卦象只嵌在 `conclusion_text` 里，调用方（工具/报告/测试）取不到，「单只是否触达 64 卦」不可观测。
+  - 新增 `evaluateDeterministic()`：跳过 L1 云模型的确定性入口（校准/批量预筛/单测复用），与 `evaluate` 判定部分同源。
+
+- **6) 修复两个真 bug**
+  - **腾讯响应 GBK 中文乱码**：`res.text()`/stdout 字符串拼接按 UTF-8 解 GBK 字节 → 所有中文名乱码（数字字段是 ASCII 所以不暴露）。
+    新增 `decodeTencentBytes()`，默认取数器与 curl 取数器统一按 GBK 解码；已补 6 条 GBK 回归断言（含「旧行为确认会乱码」对照组）。
+  - **`fetchIndexQuotes` 漏解码 Buffer**：注入 fetcher 回 Buffer 时 `typeof raw !== 'string'` 直接判 `empty-response` →
+    指数上下文静默变 null → HY 宫（依赖指数 sectorPct）**整宫 NA** → 上卦少一位爻。校准脚本首跑即踩中（HY n=0）。
+  - **校准分位四舍五入偏置**：p50 取 `toFixed(4)` 会把阈值抬高（0.55555→0.5556），恰好等于中位数的股票在 `>=` 判定中反被判阴，
+    实测令 ZJ 爻阳率从 50% 掉到 35.5%。改为全精度存储、仅展示时格式化。
+
+- **7) 质量门**
+  - 10 套件 **368 断言全 PASS**（连续两轮全绿）：verify 27 + hexagram 29 + verdict 4 + rate_limit 22 + 判词 19 + 编码 15
+    + 适配层 **106**（含 GBK 6 条）+ 自动会话 15 + **股票 inputs/基线/单事项 80（新）** + quota 51。
+  - 新增 `test_stock_inputs.mjs` 覆盖：宫级简写与 origin 解耦、unmatched 审计、基线加载与满熵证据、
+    factor-prompt 契约、degraded/notice、腾讯行构造器（按字段位显式赋值，杜绝手数 `~` 错位）、行情失败回退。
+  - `scripts/divine_batch_stocks.mjs` 的铺开循环改调共享 `signalsToInputs`（消除同口径两份实现）；
+    **56 只离线回归完全不变**（16/19/16/5，卦象仍 5 种）。
+  - `test_rate_limit` 连续 15 次复跑 22/22 稳定。
+
+- **8) 已知边界（如实披露）**
+  - 64 卦**可达性**依赖样本代表性：400 只随机样本 48/64；15 只手选大盘股仅 6~8 种
+    （大市值股天然高于各爻中位，属选择偏差而非缺陷）。要「任意单只都大概率落进新卦」仍需扩样本或分层抽样。
+  - HY01/HY04 仍用**大盘涨跌代理**板块景气（无板块标签），`meta.sector_proxy` 已标注；HY08 不出信号（避免与 HG07 同源）。
+  - JB/GZ 覆盖率 66%（亏损股无 PE → NA），这是数据限制不是 bug。
+  - 另一会话的 `docs/stock-trend-v2-设计方案-暂定.md`（1296 新剥本）范围更大且**明确只规划未实施**，本版未触及。
+
 ## 0.5.2 (2026-10-22)
 ### 卦象空间再扩容：补子域（k 4→6，卦种 11→28）+ 语义与正确性修正 + 在线/离线对比工具
 
