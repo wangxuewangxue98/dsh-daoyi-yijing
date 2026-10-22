@@ -14,17 +14,26 @@ import { fileURLToPath } from 'node:url'
 import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpoints.mjs'
 import { evaluateDeterministic } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript, buildOrderFromScript } from '../lib/yijing/hexagram.mjs'
-import { fetchQuotes, quoteToSignals } from '../adapters/quote.mjs'
+import { parseCp } from '../lib/yijing/quad-hexagram.mjs'
+import { familyOf } from '../lib/yijing/subfamily-map.mjs'
+import { fetchQuotes, quoteToSignals, createCurlFetcher } from '../adapters/quote.mjs'
 import { buildStockInputs, signalsToInputs } from '../adapters/stock-inputs.mjs'
+
+// 与 checkpoints.mjs buildStockScript 的 ASPECTS 严格一致（ci→aspect 名，供 familyOf 使用）
+const ASPECTS = ['强度', '持续性', '确定性', '边际变化', '安全边际', '催化']
+const aspectNameOf = (id) => ASPECTS[Number(id.slice(4, 6)) - 1] || null
 
 // ── 参数 ──
 const argOf = (name, dflt) => {
   const i = process.argv.indexOf(`--${name}`)
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : dflt
 }
+const hasFlag = (name) => process.argv.includes(`--${name}`)
 const N_TARGET = Number(argOf('n', 400))
 const SEED = Number(argOf('seed', 20261022))
 const OUT_FILE = argOf('out', fileURLToPath(new URL('../lib/yijing/baselines-stock.json', import.meta.url)))
+// --curl：代理环境注入 curl fetcher（undici 不读代理环境变量；与 A/B 实测同款通道）
+const CURL_PROXY = hasFlag('curl') ? (process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.https_proxy || process.env.http_proxy || undefined) : undefined
 
 // ── 候选代码池（主板/中小板/创业板/科创板均匀撒样；死代码由行情解析自然过滤）──
 function mulberry32(a) {
@@ -83,7 +92,10 @@ async function main() {
   const quotes = new Map()
   let fetched = 0
   for (let i = 0; i < pool.length; i += 60) {
-    const r = await fetchQuotes(pool.slice(i, i + 60), { timeoutMs: 12000 })
+    const r = await fetchQuotes(pool.slice(i, i + 60), {
+      timeoutMs: 12000,
+      ...(CURL_PROXY ? { fetcher: createCurlFetcher({ proxy: CURL_PROXY, timeoutMs: 12000 }) } : {}),
+    })
     for (const [c, q] of r.quotes) if (q) quotes.set(c, q)
     fetched = r.fetched
     process.stdout.write(`\r  已请求 ${Math.min(i + 60, pool.length)}/${pool.length}，有效 ${quotes.size} 只`)
@@ -108,6 +120,8 @@ async function main() {
 
   const script0 = buildStockScript()
   const db = buildCheckpointDatabase(script0)
+  // 分组基线累加器（si 子域位 / ci 业务族 / xi aspect）：跨股票收集「每只股票每组阳率」
+  const groupsAcc = { si: {}, ci: {}, xi: {} }
   const rows = []
   for (let i = 0; i < codes.length; i++) {
     const code = codes[i]
@@ -121,10 +135,33 @@ async function main() {
       db,
     )
     const script = { ...script0, na: { domains: [], checkpoints: built.naIds } }
-    // 确定性推演（不调 LLM：校准只求宫分分布，避免数百次撞免费 LLM 速率闸）
-    const r = evaluateDeterministic(script, { inputs: built.inputs })
+    // 确定性推演（不调 LLM：校准只求宫分分布，避免数百次撞免费 LLM 速率闸）；返回逐检查点阴阳用于分组基线
+    const r = evaluateDeterministic(script, { inputs: built.inputs, returnEvaluations: true })
     const scores8 = {}
     for (const d of script0.domains) scores8[d.code] = r.domain_results[d.code]?.score ?? null
+    // 本只股票各分组阳率 → 跨股票收集（使每只股票该组阳率≈中位 → 消恒阳爻）
+    const perStock = { si: {}, ci: {}, xi: {} }
+    const acc = (dim, key, y) => {
+      perStock[dim][key] ||= { s: 0, c: 0 }
+      perStock[dim][key].s += y
+      perStock[dim][key].c += 1
+    }
+    for (const cp of db.checkpoints) {
+      // ⚠ 只统计「实际参与推演」的检查点：r.evaluations 仅含非 NA 项；
+      //   NA（无行情信号）不计入分组阳率，否则会把 NA 当阴、压低基线分位（实测 si-5 全 0 的根因）。
+      const ev = r.evaluations && r.evaluations[cp.id]
+      if (!ev) continue
+      const y = ev.yinYang === 1 ? 1 : 0 // judgeYinYang 返回 +1/-1
+      const { di, si, ci } = parseCp(cp.id)
+      if (si >= 1 && si <= 6) acc('si', String(si), y)
+      acc('ci', familyOf(di, aspectNameOf(cp.id)), y)
+      if (ci >= 1 && ci <= 6) acc('xi', String(ci), y)
+    }
+    for (const dim of ['si', 'ci', 'xi']) {
+      for (const [k, v] of Object.entries(perStock[dim])) {
+        ;(groupsAcc[dim][k] ||= []).push(v.c ? v.s / v.c : null)
+      }
+    }
     rows.push({
       code,
       name: q.name,
@@ -151,6 +188,32 @@ async function main() {
     }
     if (!vals.length) {
       console.warn(`  ⚠ 宫 ${code} 在本批 0 个有效分（该宫未占爻位或无活跃子域），基线不含此宫`)
+    }
+  }
+
+  console.log('[3b] 计算分组（si/ci/xi）阳率总体分位（p25/p50/p75）…')
+  const groups = {}
+  for (const dim of ['si', 'ci', 'xi']) {
+    groups[dim] = {}
+    for (const [key, arr] of Object.entries(groupsAcc[dim])) {
+      const vals = arr.filter((v) => typeof v === 'number').sort((a, b) => a - b)
+      const distinct = new Set(vals).size
+      const frozen = distinct <= 1 // 冻结组：全市场无分化（如催化 aspect 恒 1.0）→ 对齐 quantileThresholds 恒阴约定
+      groups[dim][key] = {
+        n: vals.length,
+        coverage: Number((vals.length / rows.length).toFixed(4)),
+        frozen,
+        p25: frozen ? null : fmt(percentile(vals, 0.25)),
+        p50: frozen ? null : fmt(percentile(vals, 0.5)),
+        p75: frozen ? null : fmt(percentile(vals, 0.75)),
+        min: vals.length ? fmt(vals[0]) : null,
+        max: vals.length ? fmt(vals[vals.length - 1]) : null,
+      }
+      if (frozen) {
+        console.warn(`  ⚠ 分组 ${dim}.${key} 全市场冻结（阳率恒 ${vals[0]}）→ 阈值置 Infinity（恒阴，消偏阳）`)
+      } else if (!vals.length) {
+        console.warn(`  ⚠ 分组 ${dim}.${key} 在本批 0 个有效阳率，基线不含此组`)
+      }
     }
   }
 
@@ -199,6 +262,7 @@ async function main() {
     seed: SEED,
     quantile: 'p50（卦象编码默认阈值）',
     domains,
+    groups,
     meta: {
       rules_note:
         '宫分口径与 tools/yijing/divine.mjs 的行情自动路径完全一致（adapters/stock-inputs.mjs 共享）；' +

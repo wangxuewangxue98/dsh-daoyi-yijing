@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 0.7.0 (2026-10-22)
+### 四连卦纵向展开（阶段 1，纯加法）：同一 384 检查点的四正交投影 + 分组基线消恒阳
+
+> 动机：v0.6.0 已把横向卦空间开满（49/64），但单事项只出**一枚卦**（卦①域投影），
+> 「子域位 / 业务族 / 爻位」三个正交轴上的结构性信息被压缩丢失（叶位分组恒 2 种卦象的坍缩）。
+> 本版在 384 引擎上**纯加法**落地四连卦机制（参照四连卦设计稿，1296+LLM 重建保留为阶段 2）：
+> 完全离线可跑、旧单卦字段原样保留、全量断言零回归。
+
+- **1) 四正交投影（新 `lib/yijing/quad-hexagram.mjs`）**
+  - 卦① 域（复用 6 活跃域，与单卦同源同阈值）、卦② 子域位 si(1~6)、卦③ 业务族 ci(L/T/S/M/R/C)、卦④ 爻位/aspect xi(1~6)。
+  - 每爻取组内阳率 ≥ 分组基线 p50 判阳；`distinct≤1` 的冻结组 → 恒阴（沿用 quantileThresholds 既有约定）。
+  - 含 `hexNameFromYaos`（先天八卦名 + 64 卦判词）、四卦 tone 一致性矩阵（2×2 同/异 + 一致率）、`quad_text` 总述。
+  - 非 stock-trend 型 6 字符 id 的剧本（motor-design/demo-384 等）诚实降级 `quad_hexagram: null`，不出退化卦。
+
+- **2) 六业务族映射（新 `lib/yijing/subfamily-map.mjs`）**
+  - 384 检查点 → 六族启发式映射：域基础族 + aspect 修正（边际变化/安全边际→R、催化→M 等），六族齐 L64/T16/S80/M64/R80/C80。
+  - 导出 `FAMILY_LABELS` / `FAMILY_ORDER` / `familyOf` / `assertFamilyCoverage`，附单测覆盖校验。
+
+- **3) 分组基线（改 `lib/yijing/baselines.mjs` + `baselines-stock.json` 重校准）**
+  - 新增 `groupThresholdsFromBaselines`：schema 增 `groups{si,ci,xi}` 各组 `{n,coverage,p25,p50,p75,min,max,frozen}`。
+  - `calibrate_stock_baselines.mjs` 重写校准统计：NA 检查点不计入组内阳率（修复 NA 污染致组基线假全 0）、
+    域分直取不均值（修复浮点 1-ulp 边界翻转）、`--curl` 开关注入 curl fetcher（代理环境取数）。
+  - 400 只随机样本重校准：分组 p50 落 0.39~0.61 真实分化；xi-6（催化）全市场冻结 → 标记 frozen 恒阴。
+
+- **4) 推演接入（改 `lib/yijing/reviewer.mjs`，加法）**
+  - `evaluate` / `evaluateDeterministic` 返回值新增 `quad_hexagram` 字段；`hexagram` 等旧字段不动，368 断言零回归。
+  - 阴阳口径修复：`judgeYinYang` 返回 +1/-1（非 0/1），四卦投影统一按 `=== 1` 计阳（与聚合器同口径）。
+
+- **5) 测试与实测**
+  - 新 `scripts/test_quad_hexagram.mjs`：12 断言（六族覆盖、四卦 6 爻映射、基线阈值生效、冻结恒阴、一致性矩阵、接线冒烟）。
+  - 56 只自选股实测（上证 -1.48%）：卦种 di 26 / si 18 / **ci 22** / xi 17（对照设计稿轮H：②10/③11/④17），阳率大部落 35~70% 满熵带；
+    四卦同象 0/56，54 只 ≥3 卦分歧（人工复核优先清单见 output/quad_hexagram_demo_results.json）；
+    卦① 与单卦 **56/56 逐只一致**（接线正确性）。
+  - 质量门：`verify.mjs` PASS + 9 个测试套件全绿 + `runtime-check.mjs` PASS。
+
 ## 0.6.0 (2026-10-22)
 ### 单事项触达 64 卦：行情接入 + 全市场基线 + LLM 打分回填
 
