@@ -1,5 +1,71 @@
 # CHANGELOG
 
+## 0.9.1 (2026-10-23)
+### P0 重启失败修复 + 分歧深度解读 + 三项遗留项收尾
+
+> 定位：**修掉 v0.9.0 在别的电脑上「更新成功、重启失败」的必现缺陷**，
+> 并把 v0.8.0 使用效果评价里残留的 S-5 / S-6 / N-1 / N-2 / N-3 与 P1 一次收尾。
+
+### 一、P0：插件启动崩溃（重启失败根因）
+
+```
+Error: cannot get property "sessionModel" without inject
+    at resolveSessionInjection (cloud-model.mjs:390)
+    at buildSessionCloudConfig (cloud-model.mjs:409)
+    at apply (index.mjs:102)      ← apply() 的第一行
+```
+
+根因：`index.mjs` 的 `inject` 仍为 `['tools']`，而 `resolveSessionInjection`
+直读 `ctx.sessionModel` —— **读了服务却没在 inject 里声明**，cordis 注入守卫直接抛错；
+插件被声明为 required → **整个 DSH 启动失败**（`StartupError: 1 required plugin did not activate`）。
+
+更深一层：对 DSH 主程序全文检索，**`sessionModel` 这个服务名根本不存在**（0 次），
+真实 LLM 服务名是 `llm`（`@deepseek-ai/dsh-llm` 提供）。这解释了历史困局：
+0.5.x 声明 `['tools','?sessionModel']` → 服务永远等不到 → pending；
+v0.9.0 删掉声明却保留读取 → failed。**修 pending 时被升级成了启动崩溃。**
+
+修复（`lib/yijing/cloud-model.mjs`）：
+
+| 手段 | 说明 |
+|---|---|
+| 声明白名单探测 | 只读取 `inject` 已声明、或经 `ctx.get()` 安全通道可达的服务；未声明的一律不直读 |
+| `ctx.get('llm')` 安全通道 | cordis 官方访问方式（先尝试 accessor / `internal/get` 瀑布），不触发守卫 |
+| 诚实降级 | 无该服务时不抛错，返回 `{source:null}` → 会话层不激活并如实记录 reason，不影响插件其余功能 |
+| 守卫语义测试 | 新增带 cordis 守卫 Proxy 的 ctx 复现用例——此前 31 项测试用普通对象 stub，**绕过了守卫**所以全绿却必崩 |
+
+实测：严格守卫下 0 崩溃；`test_session_activation` 31 PASS / 0 FAIL；`runtime-check` PASS。
+
+### 二、S-5 / S-6：会话层不再静默抢用户的厂商选择
+
+| 编号 | 问题 | 修复 |
+|---|---|---|
+| S-5 | 用户显式选 qwen 时，`resolveCloudSettings` 的 autoSession 分支仍返回 provider=session → 显式厂商被静默替换/静默离线 | autoSession 分支启用 `hasExplicitProvider`（此前第 167 行已算却未用） |
+| S-6 | `cloudModelAutoSession:false` 关不净（`buildSessionCloudConfig` 仍可能置 `cloudModelEnabled:true`） | 短路判定提前：显式关闭即返回 `enabled:false, reason:'cloudModelAutoSession:false'` |
+
+### 三、P1：卦象分歧时给出深度解读
+
+新增 `lib/yijing/quad-divergence.mjs`（纯确定性，零云模型依赖）：
+
+- 分歧时**以卦①域卦为基准趋势卦**，其余三卦定位为辅助视角（di 判趋势方向、si 判执行面、ci 判业务族结构、xi 判爻位节奏）；
+- 输出**脆弱爻**（跨切面翻转的爻）与**行动指引**（该看多、该谨慎、该等确认，各自给出依据）；
+- 同象时明确「四卦同象、证据自洽度最高、可直接采用卦①口径」；
+- 可选 LLM 扩写（`enhanceDivergenceReading`，仅显式开启 + 云模型已激活 + 确实分歧时才调用，不占免费额度之外的路径）；
+- `yijing_divine` / `divine_batch_stocks.mjs` 输出新增 `divergence` 段与 `quad_divergence` 汇总统计。
+
+### 四、N-1 / N-2 / N-3 收尾
+
+| 编号 | 措施 |
+|---|---|
+| N-1 | `thresholdBasis='absolute'` 不再是无护栏口径：四连卦结构体新增 `basis_guard`，非 baseline 口径时给出显式告警与建议 |
+| N-2 | 基线版本提示：`structure.baseline` 落 `meta`（样本数 / 校准日 / ci_grouping / density），输出端可见口径来源 |
+| N-3 | 贴线摇摆股引擎级信号：`verdict_swing`（band ±0.05，含 margin / side / decisive_line），民生 margin=0.0602 这类贴线股不再无感；批量汇总新增 `swing{count,rate,band,note}` |
+
+### 回归口径
+
+18 个套件全绿：`verify` PASS、`runtime-check` PASS、`test_session_activation` **31 PASS**、
+`test_v090_features` **79 PASS**、新增 `test_v091_features` **24 PASS**、其余既有套件零回归。
+全部为加法改动 + P0 启动路径修复，v0.8.x/0.9.0 的判定逐位不变。
+
 ## 0.9.0 (2026-10-23)
 ### 会话 LLM 层激活修复 + 使用效果评价报告 F-1..F-10 全量落地
 

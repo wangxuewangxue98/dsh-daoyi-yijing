@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.9.0
+  version: 0.9.1
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -169,7 +169,14 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
 | `freeLlmPerMinute` | `10` | 免费 LLM 每分钟速率上限（60s 滑动窗口），超出排队等待 |
 | `freeLlmDailyLimit` | `0` | 每日硬上限（可选兜底，0=关闭） |
 | `freeQuotaEnabled` | `true` | 本地额度闸门总开关 |
-| `cloudModelAutoSession` | `true` | Runtime 注入 sessionModel 且无自有 Key 时自动借用会话模型 |
+| `cloudModelAutoSession` | `true` | **会话模型唯一开关**（v0.9.1 起经 `ctx.get('llm')` 安全通道取用，不再是 inject 越权直读） |
+| `cloudModelEnabled` | `false` | **用户自有云模型**总闸（与会话层解耦）；v0.9.1 起不再影响会话模型激活 |
+
+> **v0.9.1 必读（v0.9.0 重启失败）**：v0.9.0 的 `resolveSessionInjection` 直读 `ctx.sessionModel`，
+> 而 `inject` 只有 `['tools']` → cordis 守卫抛 `cannot get property "sessionModel" without inject`
+> → 插件 required → DSH 启动失败。且 DSH 中该服务名并不存在（真实服务是 `llm`）。
+> 修复：一律走 `ctx.get('llm')` / `safeContextService()` 安全通道，绝不外抛。
+> 若在那台电脑上仍停留在 0.9.0，升级到 0.9.1 即可；也可跑 `node scripts/diagnose_install.mjs` 自检。
 
 ## 内置剧本
 - `motor-design`：电机电磁设计·万事决（真实 384 检查点，226 活跃 / 158 NA）。

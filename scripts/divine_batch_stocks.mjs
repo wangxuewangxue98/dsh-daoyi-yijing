@@ -27,6 +27,7 @@ import { fetchSignalsForStocks, RULES_TEXT } from '../adapters/quote.mjs'
 import { signalsToInputs, signalsToInputsV2 } from '../adapters/stock-inputs.mjs'
 import { FINE_MAP } from '../lib/yijing/subdomain-fine-map.mjs'
 import { loadBaselines, stratumMetaOf } from '../lib/yijing/baselines.mjs'
+import { SWING_BAND_DEFAULT } from '../lib/yijing/aggregator.mjs'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -229,10 +230,31 @@ function compactQuadForBatch(quad) {
   for (const [k, h] of Object.entries(quad.hexes)) {
     hexes[k] = { label: h.label, name: h.name, yang: h.yang, tone: h.tone, degraded: Boolean(h.degraded) }
   }
+  // v0.9.1 P1：分歧解读进批量输出，但剔除成段 reading（每只数百字 × 数百只 = 体积爆炸；
+  //   保留可统计/可排序的结构字段，需要文案时走单只调用）
+  const cons = quad.consistency || null
+  let divergence = null
+  if (cons && cons.divergence) {
+    const d = cons.divergence
+    divergence = {
+      divergent: d.divergent,
+      pattern: d.pattern,
+      pattern_label: d.pattern_label,
+      severity: d.severity,
+      base: d.base,
+      base_name: d.base_name,
+      yang_spread: d.yang_spread,
+      outliers: d.outliers || [],
+      divergent_keys: d.divergent_keys || [],
+      fragile_yaos: (d.fragile_yaos || []).slice(0, 3),
+      focus: d.focus || [],
+      reading_source: d.reading_source || 'deterministic',
+    }
+  }
   return {
     structure: quad.structure || null,
     hexes,
-    consistency: quad.consistency || null,
+    consistency: cons ? { ...cons, divergence } : null,
   }
 }
 
@@ -292,6 +314,9 @@ export async function runBatch(opts = {}) {
       thresholdBasis: opts.thresholdBasis === 'absolute' ? 'absolute' : 'baseline',
       ciGrouping: opts.ciGrouping,
       strongOverride: opts.strongOverride === 'include-proxies' ? 'include-proxies' : undefined,
+      // v0.9.1：N-1 口径护栏（批量默认不承认 absolute 为生产口径）/ N-3 摇摆带
+      allowAbsoluteBasis: opts.allowAbsoluteBasis === true,
+      swingBand: typeof opts.swingBand === 'number' ? opts.swingBand : undefined,
     })
     // 分层审计：live 有真实行情（总市值/涨跌）才分层；离线快照无市值 → 诚实标注不可用
     const q = quotesByCode.get(String(code).replace(/\D/g, ''))
@@ -329,6 +354,9 @@ export async function runBatch(opts = {}) {
       trend: mapTrend(r),
       has_veto: r.has_veto,
       veto_score_conflict: r.veto_score_conflict === true, // 否决骑墙（veto 但综合分≥0.5）→ 人工复核优先
+      // v0.9.1 N-3：贴线摇摆（跨种子易翻面）——与骑墙正交，只看分数距决定线的余量
+      verdict_swing: r.verdict_swing || null,
+      swing_borderline: Boolean(r.verdict_swing && r.verdict_swing.borderline),
       veto_reason: r.has_veto ? (flag === 'ST' ? 'ST 风险警示 → FX/XX 白名单强关联失守' : '当日深跌风险暴露 → FX 白名单强关联失守') : null,
       risk_level: r.risk_level,
       overall_score: r.overall_score,
@@ -374,6 +402,19 @@ export async function runBatch(opts = {}) {
   )
   const borderline = results.filter((r) => r.veto_score_conflict).length
   const stratumUsed = results.filter((r) => r.stratum_used).length
+  // v0.9.1 N-3：贴线摇摆统计
+  const swingCount = results.filter((r) => r.swing_borderline).length
+  // v0.9.1 P1：四卦分歧形态分布（按 pattern / severity 归类）
+  const divPatterns = {}
+  const divSeverity = { high: 0, medium: 0, low: 0 }
+  let divCount = 0
+  for (const r of results) {
+    const d = r.quad_hexagram && r.quad_hexagram.consistency && r.quad_hexagram.consistency.divergence
+    if (!d || !d.divergent) continue
+    divCount++
+    divPatterns[d.pattern] = (divPatterns[d.pattern] || 0) + 1
+    if (divSeverity[d.severity] != null) divSeverity[d.severity]++
+  }
 
   // v0.9.0 F-1：进卦域优先取剧本声明的 hex_order（1296 六域全进卦），无声明再回落三才切分
   const inHexDomains = Array.isArray(scriptObj.hex_order) && scriptObj.hex_order.length >= 6
@@ -418,6 +459,33 @@ export async function runBatch(opts = {}) {
       rate: results.length ? Number((borderline / results.length).toFixed(4)) : 0,
       note: '否决骑墙 = 触发一票否决但综合分 ≥0.5（评分不支持「不可行」）→ 人工复核优先清单',
     },
+    // v0.9.1 N-3：贴线摇摆统计 + P1：卦象分歧形态分布
+    swing: {
+      count: swingCount,
+      rate: results.length ? Number((swingCount / results.length).toFixed(4)) : 0,
+      band: typeof opts.swingBand === 'number' ? opts.swingBand : SWING_BAND_DEFAULT,
+      sample: results.filter((r) => r.swing_borderline).slice(0, 8).map((r) => ({
+        name: r.name, code: r.code, verdict: r.verdict,
+        margin: r.verdict_swing ? r.verdict_swing.margin : null,
+      })),
+      note: '贴线摇摆 = 结论距决定线余量 ≤ band（默认 0.08）：跨种子/跨快照易翻面，不得当稳定判据；与否决骑墙正交',
+    },
+    quad_divergence: {
+      count: divCount,
+      rate: quadCount ? Number((divCount / quadCount).toFixed(4)) : 0,
+      patterns: divPatterns,
+      by_severity: divSeverity,
+      note: '四卦分歧样本（最有信息量）：pattern 为分歧形态归类，severity=high 者不得直接采信任一单卦',
+    },
+    // v0.9.1 N-1：absolute 口径护栏（批量生产路径默认不承认）
+    basis_guard: {
+      basis: opts.thresholdBasis === 'absolute' ? 'absolute' : 'baseline',
+      guarded: opts.thresholdBasis === 'absolute' && opts.allowAbsoluteBasis !== true,
+      note:
+        opts.thresholdBasis === 'absolute' && opts.allowAbsoluteBasis !== true
+          ? '本次使用 absolute 口径但未加 --allow-absolute-basis：结果仅作对照，不得作为决策判据'
+          : 'baseline 分位口径（生产）',
+    },
     stratum_audit: {
       used: stratumUsed,
       total: results.length,
@@ -449,7 +517,28 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('divine_batc
   const ciGrouping = flagVal('--ci-grouping') || undefined
   const strongOverride = flagVal('--strong-override') || undefined
   const fineMap = argv.includes('--no-fine-map') ? false : undefined
-  runBatch({ live, script: scriptArg, ciGrouping, strongOverride, fineMap }).catch((e) => {
+  // v0.9.1：N-1 口径护栏 —— 批量是生产路径，absolute 必须显式确认，否则直接拒绝启动
+  const thresholdBasis = flagVal('--threshold-basis') || undefined
+  const allowAbsoluteBasis = argv.includes('--allow-absolute-basis')
+  if (thresholdBasis === 'absolute' && !allowAbsoluteBasis) {
+    console.error(
+      '拒绝启动：--threshold-basis absolute 未经分位校准（爻会恒阳/恒阴、卦象坍缩），仅作对照/调试。\n' +
+        '若确认要做该对照，请显式加 --allow-absolute-basis（结果会在 meta.basis_guard 中标记为非生产口径）。',
+    )
+    process.exit(2)
+  }
+  const swingBandRaw = flagVal('--swing-band')
+  const swingBand = swingBandRaw != null && Number.isFinite(Number(swingBandRaw)) ? Number(swingBandRaw) : undefined
+  runBatch({
+    live,
+    script: scriptArg,
+    ciGrouping,
+    strongOverride,
+    fineMap,
+    thresholdBasis,
+    allowAbsoluteBasis,
+    swingBand,
+  }).catch((e) => {
     console.error('批推演失败:', e)
     process.exit(1)
   })

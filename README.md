@@ -121,6 +121,27 @@ node scripts/divine_stock_600711.mjs   # 盛屯矿业(600711) 一个月涨跌推
 
 > ⚠️ 股票推演结果由公开数据映射的因子评分驱动，属结构化多因子研判示意，**不构成任何投资建议**。
 
+## v0.9.1：重启失败根因修复 + 分歧深度解读（重要，v0.9.0 用户必读）
+
+**v0.9.0 在部分机器上「更新成功、重启失败」，根因是插件自身的必现缺陷，已在本版修掉。**
+
+```
+Error: cannot get property "sessionModel" without inject
+    at resolveSessionInjection (cloud-model.mjs)
+    at apply (index.mjs)      ← apply() 第一行
+```
+
+- **根因**：`index.mjs` 的 `inject` 仍是 `['tools']`，而 `resolveSessionInjection` **直读 `ctx.sessionModel`**
+  —— 读了服务却没在 `inject` 里声明，cordis 注入守卫直接抛错；插件为 required → **整个 DSH 启动失败**。
+- **更深一层**：DSH 主程序中 `sessionModel` 这个服务名**根本不存在**（真实 LLM 服务名是 `llm`）。
+  这解释了历史困局：0.5.x 声明 `?sessionModel` → 永远等不到 → pending；v0.9.0 删声明却保留直读 → failed。
+- **修复**：统一走 `ctx.get('llm')` 安全通道（cordis 官方访问方式，服务不存在返回 undefined **不抛**），
+  直读一律经 `safeContextService()` 兜底；会话层是「可降级增强」，任何异常都不再拖垮插件加载。
+- **为什么 31 项测试全绿却必崩**：既有测试用普通对象 stub ctx，**绕过了 cordis 的守卫 Proxy**。
+  现新增带守卫语义的集成回归（`scripts/test_v091_features.mjs`），并做过 A/B：还原 v0.9.0 直读即复现生产错误。
+- 其余收尾：S-5 显式厂商不再被 session 静默替换、S-6 `cloudModelAutoSession:false` 关得干净、
+  P1 四卦分歧深度解读（`quad-divergence.mjs`）、N-1 absolute 口径护栏、N-2 基线版本提示、N-3 贴线摇摆股信号。
+
 ## v0.9.0：会话 LLM 层激活修复 + F-1..F-10 全量落地
 - **★ 会话模型「透传了却不激活」缺陷已修**：Config schema 的 `cloudModelEnabled` 默认 `false` 会被填进 config，
   而会话分支用 `cloudModelEnabled !== false` 判启用 → 恒 false，会话模型**永不激活**（与文档承诺相悖）。

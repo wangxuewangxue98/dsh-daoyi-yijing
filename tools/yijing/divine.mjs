@@ -75,6 +75,25 @@ export const TOOL_PARAMS = {
       '卦象编码阈值来源：auto（默认，行情路径用基线分位，其余绝对 0.5）/ baseline（强制基线，无则回落）/' +
         'absolute（强制 0.5）。基线模式下爻义=「相对市场中位偏强/偏弱」',
   },
+  allowAbsoluteBasis: {
+    type: 'boolean',
+    description:
+      '可选（默认 false）：显式确认使用 absolute 阈值口径。absolute（绝对 0.5）未经分位校准，' +
+        '在低/高分位维度会退化成恒阳或恒阴（卦象坍缩）——只能用于与基线口径对照/调试。' +
+        '未置 true 时照算，但输出 basis_guard.guarded=true 并在文案里打 ⚠，提醒不得作为决策判据',
+  },
+  swingBand: {
+    type: 'number',
+    description:
+      '可选（默认 0.08）：贴线摇摆带宽。结论距决定线（可行 0.75 / 有条件 0.5）的余量 ≤ 该值即判定为' +
+        '「摇摆」（verdict_swing.borderline=true）——跨种子/跨快照易翻面，不得当稳定判据；设 0 关闭',
+  },
+  deepReading: {
+    type: 'boolean',
+    description:
+      '可选（默认 false）：卦象分歧时由云模型扩写深度解读。默认输出确定性解读（定性/焦点/敏感爻/怎么用）；' +
+        '置 true 且云模型已激活时，额外调用 LLM 结合本次推演事实扩写成段解读（reading_source=llm）',
+  },
   detail: {
     type: 'boolean',
     description: '是否输出详报（含 64 卦/八宫明细 + LLM 额度画像），默认 false 出紧凑结论（避免长日志灌爆上下文）',
@@ -134,9 +153,36 @@ function compactQuad(quad) {
     ]),
   )
   const c = quad.consistency
+  // v0.9.1 P1：分歧深度解读进紧凑输出（此前只有一句「建议人工复核」）
+  const d = c && c.divergence
+  const divergence = d
+    ? {
+        divergent: d.divergent,
+        pattern: d.pattern,
+        pattern_label: d.pattern_label,
+        severity: d.severity,
+        base: d.base,
+        base_name: d.base_name,
+        yang_spread: d.yang_spread,
+        outlier_count: (d.outliers || []).length,
+        fragile_top: (d.fragile_yaos || []).slice(0, 3).map((f) => ({
+          dim: f.dim,
+          label: f.label,
+          value: f.value,
+          threshold: f.threshold,
+          gap: f.gap,
+        })),
+        focus: d.focus,
+        reading: d.reading,
+        reading_source: d.reading_source,
+      }
+    : null
   return {
     ...hexes,
-    consistency: c.consensus ? '四卦同象' : `分歧 ${c.distinctNames} 种卦象（建议人工复核）`,
+    consistency: c.consensus
+      ? '四卦同象'
+      : `分歧 ${c.distinctNames} 种卦象${d ? `（${d.pattern_label}，严重度 ${d.severity}）` : '（建议人工复核）'}`,
+    divergence,
     text: quadText(quad),
   }
 }
@@ -305,6 +351,10 @@ export async function runYijingDivine(args = {}, config = {}) {
     thresholdBasis: hexEncoding === 'absolute' ? 'absolute' : 'baseline',
     ciGrouping: args.ciGrouping,
     strongOverride: args.strongOverride === 'include-proxies' ? 'include-proxies' : undefined,
+    // v0.9.1：N-1 口径护栏（absolute 需显式确认）/ N-3 摇摆带 / P1 分歧解读深度
+    allowAbsoluteBasis: args.allowAbsoluteBasis === true,
+    swingBand: typeof args.swingBand === 'number' ? args.swingBand : undefined,
+    deepReading: args.deepReading === true,
   })
 
   // 兜底退化显式告警（v0.6.0）：杜绝「8/8 同卦」无感发生
@@ -324,6 +374,22 @@ export async function runYijingDivine(args = {}, config = {}) {
     notice = notice ? notice + '\n' + extra : extra
   }
 
+  // v0.9.1 N-1/N-2：口径护栏与基线过期告警（detail=false 也必须可见，否则等于没有护栏）
+  const st = result.quad_hexagram && result.quad_hexagram.structure
+  if (st && st.basis_guard && st.basis_guard.guarded) {
+    const extra = `⚠ 口径护栏：${st.basis_guard.note}`
+    notice = notice ? notice + '\n' + extra : extra
+  }
+  if (st && st.baseline && st.baseline.stale) {
+    const extra = `⚠ 基线过期：${st.baseline.note}`
+    notice = notice ? notice + '\n' + extra : extra
+  }
+  // v0.9.1 N-3：贴线摇摆告警
+  if (result.verdict_swing && result.verdict_swing.borderline) {
+    const extra = `⚠ 结论贴线：${result.verdict_swing.note}`
+    notice = notice ? notice + '\n' + extra : extra
+  }
+
   if (args.detail) {
     return { ...result, quote: quoteMeta, inputs_source: inputsSource, hex_encoding: hexEncoding }
   }
@@ -336,6 +402,8 @@ export async function runYijingDivine(args = {}, config = {}) {
     overall_score: result.overall_score,
     has_veto: result.has_veto,
     veto_score_conflict: result.veto_score_conflict === true, // 否决骑墙（veto 但综合分≥0.5）→ 人工复核优先
+    // v0.9.1 N-3：贴线摇摆（结论距决定线太近 → 跨种子/跨快照易翻面，不得当稳定判据）
+    verdict_swing: result.verdict_swing || null,
     conclusion: result.conclusion_text,
     sixiang: result.sixiang,
     sancai: Object.fromEntries(
@@ -357,6 +425,10 @@ export async function runYijingDivine(args = {}, config = {}) {
       ci_grouping: result.quad_hexagram ? result.quad_hexagram.structure.ci_grouping : null,
       hex_order: result.quad_hexagram ? result.quad_hexagram.structure.hex_order : null,
       quad_degraded: result.quad_hexagram ? result.quad_hexagram.structure.degraded : null,
+      // v0.9.1 N-1：absolute 口径护栏（guarded=true → 只作对照，不得当决策判据）
+      basis_guard: result.quad_hexagram ? result.quad_hexagram.structure.basis_guard : null,
+      // v0.9.1 N-2：基线版本可见（跨机器卦象不一致时可归因）
+      baseline: result.quad_hexagram ? result.quad_hexagram.structure.baseline : null,
     },
     quad_hexagram: compactQuad(result.quad_hexagram),
     llm: compactLlm(result.llm),

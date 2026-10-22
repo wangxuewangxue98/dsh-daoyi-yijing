@@ -6,7 +6,19 @@ import { fileURLToPath, URL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { configureRegistry } from './lib/yijing/registry.mjs'
 import { runSelfCheck } from './lib/yijing/selfcheck.mjs'
-import { configureCloudModel, parseCustomModels, buildSessionCloudConfig } from './lib/yijing/cloud-model.mjs'
+// v0.9.1：改为命名空间导入 + 兜底 —— 若出现「更新时文件未完整替换」
+// （新 index.mjs 配旧 cloud-model.mjs），命名导入会直接抛
+// "does not provide an export named 'buildSessionCloudConfig'"，宿主加载即失败。
+// 兜底后降级为「不激活会话层、插件照常可用」，不把一个可降级特性变成启动崩溃。
+import * as cloudModelModule from './lib/yijing/cloud-model.mjs'
+const { configureCloudModel, parseCustomModels } = cloudModelModule
+const buildSessionCloudConfig =
+  typeof cloudModelModule.buildSessionCloudConfig === 'function'
+    ? cloudModelModule.buildSessionCloudConfig
+    : (cfg = {}) => ({
+        config: cfg,
+        session: { source: null, enabled: false, reason: 'buildSessionCloudConfig-missing(partial-update)', tookOver: false },
+      })
 import { checkLlmQuota } from './lib/yijing/quota.mjs'
 
 export const name = 'dsh-daoyi-yijing'
@@ -60,10 +72,11 @@ export const Config = Schema.object({
   // ---- DSH 会话当前模型（v0.3.4，可选；v0.5.1 起默认自动）----
   cloudModelAutoSession: Schema.boolean().default(true)
     .description(
-      '对话中自动使用 DSH 会话当前模型：Runtime 注入会话模型（config.sessionModel / ctx.sessionModel / ' +
-        'ctx.llm.sessionModel）且用户未配置自有 apiKey、未显式选其他厂商时自动启用，无需手动开 cloudModelEnabled、' +
+      '对话中自动使用 DSH 会话当前模型：Runtime 注入会话模型（config.sessionModel / ctx.get("llm")）' +
+        '且用户未配置自有 apiKey、未显式选其他厂商时自动启用，无需手动开 cloudModelEnabled、' +
         '无需自备 Key（仍受免费额度速率闸门约束；费用计入用户会话）。**这是会话层的唯一开关**：设 false 即关闭，' +
-        '此时完全离线模板。v0.9.0 修复：此前因 cloudModelEnabled 默认 false，本项虽为 true 也无法激活',
+        '此时完全离线模板。v0.9.0 修复：此前因 cloudModelEnabled 默认 false，本项虽为 true 也无法激活；' +
+        'v0.9.1 修复：此前直读 ctx.sessionModel 触发 cordis inject 守卫 → 插件启动崩溃（改用 ctx.get 安全通道）',
     ),
   cloudModelUseSessionModel: Schema.boolean().default(false)
     .description(
@@ -94,14 +107,37 @@ export const Config = Schema.object({
 
 export async function apply(ctx, config) {
   // 0) DSH 会话当前模型注入（v0.9.0 修复：透传 + 激活）
-  //    透传：Runtime 可经 config.sessionModel / ctx.sessionModel / ctx.llm.sessionModel 注入，
-  //      v0.8.x 只读第一种，其余两种静默丢失 → 会话层不激活且无告警。
+  //    透传：Runtime 可经 config.sessionModel / ctx.get('llm')（DSH 真实 LLM 服务）注入，
+  //      v0.8.x 只读第一种，其余静默丢失 → 会话层不激活且无告警。
+  //    ⚠ v0.9.1 P0：ctx 是带 inject 守卫的 Proxy，直读未声明服务（ctx.sessionModel）会抛
+  //      "cannot get property ... without inject" → 插件 required → 宿主启动失败。
+  //      现统一走 safeContextService / ctx.get 安全通道（详见 cloud-model.mjs），绝不外抛。
   //    激活：Config schema 的 cloudModelEnabled 默认 false 会被填进 config，
   //      使 resolveCloudSettings 的自动会话分支恒判为「未启用」（详见 buildSessionCloudConfig 注释）。
   //      故由本层在自动会话条件成立时显式置 enabled=true，恢复「无需手动开 enabled」的文档承诺。
-  const built = buildSessionCloudConfig(config, ctx)
-  const cloudConfig = built.config
-  const sess = built.session
+  // v0.9.1：会话层是「可降级增强」，不是启动必需 —— 任何异常都不得拖垮插件加载。
+  //
+  // 【P0 同类防护】ctx 是带 inject 守卫的 Proxy：任何**未声明/非内置**的属性直读都可能抛错，
+  //   而 apply() 内抛错 = 插件 required = 整个宿主启动失败（v0.9.0 已因此挂过一次）。
+  //   故 apply() 内所有 ctx.* 访问一律经 safeLog/安全通道，日志失败也只丢日志、不丢插件。
+  const safeLog = (msg) => {
+    try {
+      ctx?.logger?.info?.(msg)
+    } catch {
+      /* 守卫/日志器不可用 → 静默降级，绝不影响插件加载 */
+    }
+  }
+  let built
+  try {
+    built = buildSessionCloudConfig(config, ctx)
+  } catch (err) {
+    built = {
+      config,
+      session: { source: null, enabled: false, reason: `session-build-error:${String(err?.message || err)}`, tookOver: false },
+    }
+  }
+  const cloudConfig = built?.config || config
+  const sess = built?.session || { source: null, enabled: false, reason: 'unknown', tookOver: false }
 
   // 1) 云模型适配器（config + env 双源；未启用/无密钥 → 离线确定性模板）
   const cloud = configureCloudModel(cloudConfig)
@@ -117,7 +153,7 @@ export async function apply(ctx, config) {
   const sessionLog = sess.source
     ? `；会话模型 ${sess.enabled ? `已激活（来源 ${sess.source}）` : `未启用（来源 ${sess.source}，原因 ${sess.reason}）`}`
     : '；会话模型 未注入（离线模板）'
-  ctx.logger?.info?.(
+  safeLog(
     `[道一-易经推演] 自校验 ${check.ok ? '通过' : '失败:' + JSON.stringify(check.issues)}` +
       `；自定义剧本回灌 ${loaded} 个` +
       `；云模型 ${cloud.active ? `已启用(${cloud.provider}/${cloud.model || '(默认)'})` : '未启用(离线模板)'}` +
@@ -129,7 +165,7 @@ export async function apply(ctx, config) {
   // 4) 注册工具
   const { registerYijingTools } = await import('./tools/yijing/index.mjs')
   const tools = await registerYijingTools(ctx, cloudConfig)
-  ctx.logger?.info?.(
+  safeLog(
     `[道一-易经推演] v${PLUGIN_VERSION} 已加载，默认剧本=${config.defaultScript}，` +
       `强否决=${config.strongVetoEnabled}，工具=${tools.join(',')}`,
   )
