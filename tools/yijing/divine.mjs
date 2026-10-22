@@ -4,6 +4,7 @@ import { getBuiltinScript } from '../../lib/yijing/checkpoints.mjs'
 import { loadCustomScript } from '../../lib/yijing/registry.mjs'
 import { extractCodes, buildStockInputs } from '../../adapters/stock-inputs.mjs'
 import { loadBaselines, thresholdsFromBaselines } from '../../lib/yijing/baselines.mjs'
+import { quadText } from '../../lib/yijing/quad-hexagram.mjs'
 
 export const TOOL_PARAMS = {
   matter: {
@@ -88,6 +89,23 @@ function compactLlm(llm) {
       ? { rateLimit: rate.rateLimit, queued: rate.queued, waitMs: rate.waitMs }
       : null,
     quota_blocked: Boolean(llm.quota_blocked),
+  }
+}
+
+// 四连卦紧凑摘要（v0.7.1）：四卦名+阳数+tone + 一致性 + 文本总述；非 stock-trend 型剧本为 null
+function compactQuad(quad) {
+  if (!quad || !quad.hexes) return null
+  const hexes = Object.fromEntries(
+    Object.entries(quad.hexes).map(([k, h]) => [
+      k,
+      { label: h.label, name: h.name, yang: h.yang, tone: h.tone },
+    ]),
+  )
+  const c = quad.consistency
+  return {
+    ...hexes,
+    consistency: c.consensus ? '四卦同象' : `分歧 ${c.distinctNames} 种卦象（建议人工复核）`,
+    text: quadText(quad),
   }
 }
 
@@ -210,6 +228,7 @@ export async function runYijingDivine(args = {}, config = {}) {
     // 无任何有效输入 → 结论由缺值兜底产生，明确标注低置信（不得当作真实研判）
     degraded: inputsSource === 'none' || (result.inputs_coverage || {}).coverage < 0.5,
     hex_encoding: { source: hexEncoding, baseline_used: hexEncoding === 'baseline' },
+    quad_hexagram: compactQuad(result.quad_hexagram),
     llm: compactLlm(result.llm),
   }
   if (quoteMeta) out.quote = quoteMeta

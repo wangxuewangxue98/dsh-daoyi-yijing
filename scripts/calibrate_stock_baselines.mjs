@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpoints.mjs'
 import { evaluateDeterministic } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript, buildOrderFromScript } from '../lib/yijing/hexagram.mjs'
-import { parseCp } from '../lib/yijing/quad-hexagram.mjs'
+import { parseCp, resolveQuadHexagram } from '../lib/yijing/quad-hexagram.mjs'
 import { familyOf } from '../lib/yijing/subfamily-map.mjs'
 import { fetchQuotes, quoteToSignals, createCurlFetcher } from '../adapters/quote.mjs'
 import { buildStockInputs, signalsToInputs } from '../adapters/stock-inputs.mjs'
@@ -71,6 +71,12 @@ function buildCandidatePool(seed) {
 }
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x))
+// ── v0.7.1 分层定义：市值带 × 涨跌带（行情快照可得字段；避免随机撒样在某层过采样）──
+const capBand = (v) =>
+  v == null ? 'u_未知' : v < 50 ? 'a_<50亿' : v < 200 ? 'b_50-200亿' : v < 1000 ? 'c_200-1000亿' : 'd_>1000亿'
+const pctBand = (v) =>
+  v == null ? 'u_未知' : v <= -2 ? 'a_≤-2%' : v < 0 ? 'b_-2~0%' : v < 2 ? 'c_0~2%' : 'd_≥2%'
+const stratumOf = (q) => `${capBand(q.totalCap)}|${pctBand(q.pct)}`
 function percentile(sorted, p) {
   if (!sorted.length) return null
   const idx = (sorted.length - 1) * p
@@ -106,7 +112,56 @@ async function main() {
     console.error(`有效样本过少（${codes.length} 只 < 60），疑似网络不通，放弃写基线`)
     process.exit(1)
   }
-  console.log(`[2/4] 有效行情 ${codes.length} 只，逐只构建 384 爻 inputs 并推演…`)
+  console.log(`[2/4] 有效行情 ${codes.length} 只，分层配额抽样（市值带×涨跌带）后逐只推演…`)
+
+  // v0.7.1 分层抽样：非空层按配额比例分配 N_TARGET（每层至少 1 只），避免随机撒样的层间过采样
+  const rndPick = mulberry32(SEED ^ 0x9e3779b9)
+  const strataCells = new Map()
+  for (const c of codes) {
+    const s = stratumOf(quotes.get(c))
+    if (!strataCells.has(s)) strataCells.set(s, [])
+    strataCells.get(s).push(c)
+  }
+  const nTarget = Math.min(N_TARGET, codes.length)
+  const selected = []
+  const quotaInfo = []
+  for (const [s, arr] of strataCells) {
+    // 随机打乱层内顺序（确定性种子）
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rndPick() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    const quota = Math.max(1, Math.round((arr.length / codes.length) * nTarget))
+    quotaInfo.push({ stratum: s, available: arr.length, quota })
+    selected.push(...arr.slice(0, quota))
+  }
+  // 超预算则确定性裁剪（保每层 ≥1）；欠预算则从余量回补
+  if (selected.length > nTarget) {
+    // 先从超出配额可用量最多的层尾裁
+    selected.length = nTarget
+  } else if (selected.length < nTarget) {
+    const chosen = new Set(selected)
+    for (const c of codes) {
+      if (selected.length >= nTarget) break
+      if (!chosen.has(c)) {
+        selected.push(c)
+        chosen.add(c)
+      }
+    }
+  }
+  console.log(
+    `  分层 ${strataCells.size} 层，配额抽样 ${selected.length} 只（` +
+      quotaInfo
+        .slice()
+        .sort((a, b) => b.available - a.available)
+        .slice(0, 5)
+        .map((x) => `${x.stratum}:${x.quota}/${x.available}`)
+        .join('，') +
+      (strataCells.size > 5 ? '…' : '') +
+      `）`,
+  )
+  codes.length = 0
+  codes.push(...selected)
 
   // 指数上下文一次（与 divine 路径同口径）
   const ctx = await buildStockInputs(codes.slice(0, 1))
@@ -165,6 +220,7 @@ async function main() {
     rows.push({
       code,
       name: q.name,
+      stratum: stratumOf(q),
       scores: scores8,
       coverage: r.inputs_coverage ? r.inputs_coverage.coverage : null,
       hex: null,
@@ -217,6 +273,23 @@ async function main() {
     }
   }
 
+  // v0.7.1 分层审计：各层宫分 p50 与总体的偏离（越小说明分层抽样后基线对各层代表越均衡）
+  const strataP50 = {}
+  for (const s of [...new Set(rows.map((r) => r.stratum))]) {
+    const sub = rows.filter((r) => r.stratum === s)
+    const rec = {}
+    for (const c of domainCodes) {
+      const vals = sub.map((r) => r.scores[c]).filter((v) => typeof v === 'number').sort((a, b) => a - b)
+      if (vals.length >= 5) rec[c] = fmt(percentile(vals, 0.5))
+    }
+    strataP50[s] = { n: sub.length, domain_p50: rec }
+  }
+  const spread = {}
+  for (const c of domainCodes) {
+    const ps = Object.values(strataP50).map((x) => x.domain_p50[c]).filter((v) => typeof v === 'number')
+    if (ps.length >= 2) spread[c] = Number((Math.max(...ps) - Math.min(...ps)).toFixed(4))
+  }
+
   console.log('[4/4] 用 p50 阈值回验卦象空间覆盖…')
   // 只对有有效分位的宫建阈值；无分位的宫交给 hexagram.mjs 回落绝对 0.5
   const thresholds = {}
@@ -255,6 +328,43 @@ async function main() {
     console.log(`    ${y.domain}: ${(y.yang_ratio * 100).toFixed(1)}% (n=${y.n})`)
   }
 
+  // v0.7.1 四连卦分组基线回验：基线定稿后二遍确定性推演（无网络开销），统计四卦卦种数
+  console.log('[4b] 四连卦分组基线回验（二遍推演，统计 di/si/ci/xi 卦种）…')
+  const baselinesForQuad = { script_id: script0.script_id, domains, groups }
+  const quadCount = { hex_di: {}, hex_si: {}, hex_ci: {}, hex_xi: {} }
+  for (const row of rows) {
+    const q = quotes.get(row.code)
+    const built = signalsToInputs(
+      quoteToSignals(q, {
+        sectorPct: indexContext && Number.isFinite(indexContext.pct) ? indexContext.pct : undefined,
+        sectorAmountWan: undefined,
+        indexCtx: indexContext,
+      }),
+      db,
+    )
+    const script = { ...script0, na: { domains: [], checkpoints: built.naIds } }
+    const r2 = evaluateDeterministic(script, { inputs: built.inputs, returnEvaluations: true })
+    // ⚠ 必须用「带 NA 标记」的 db：quad-hexagram 按 cp.na 跳过 NA 检查点，
+    //   无标记 db 会把 NA 当阴计入分组阳率（实测令 si/ci/xi 卦种坍缩到 2 种）。
+    //   evaluateDeterministic 内部自建 db（带 na），这里取其逐检查点 evaluations 回放。
+    const dbNa = buildCheckpointDatabase(script)
+    const evalsMap = new Map(Object.entries(r2.evaluations || {}))
+    const quad = resolveQuadHexagram(dbNa, evalsMap, script, baselinesForQuad, { domain_results: r2.domain_results })
+    if (!quad) continue
+    for (const k of Object.keys(quadCount)) {
+      const nm = quad.hexes[k].name
+      quadCount[k][nm] = (quadCount[k][nm] || 0) + 1
+    }
+  }
+  const quadDistinct = Object.fromEntries(
+    Object.entries(quadCount).map(([k, m]) => [k, Object.keys(m).length]),
+  )
+  console.log(
+    `  四卦卦种：${Object.entries(quadDistinct)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(' / ')}（理论上限 64）`,
+  )
+
   const out = {
     script_id: script0.script_id,
     generated_at: new Date().toISOString(),
@@ -274,6 +384,14 @@ async function main() {
       ),
       hexagram_distinct_in_sample: distinct,
       hexagram_top8: top,
+      quad_distinct_in_sample: quadDistinct,
+      strata: {
+        definition: '市值带(<50/50-200/200-1000/>1000亿)×涨跌带(≤-2/-2~0/0~2/≥2%)，非空层配额抽样',
+        cells: strataCells.size,
+        per_stratum: strataP50,
+        domain_p50_spread_across_strata: spread,
+        spread_note: '各层宫分 p50 的极差；越小说明分层抽样后基线对各市值/动量层代表越均衡',
+      },
       yao_yang_ratio: yaoStats,
       entropy_note: '每爻阳率越接近 0.5，该爻信息量越大（满熵）；偏离越大越接近冻结',
       disclaimer: '易学框架下的结构化研判，不构成投资建议',

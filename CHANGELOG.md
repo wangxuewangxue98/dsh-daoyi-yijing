@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 0.7.1 (2026-10-22)
+### 工具层透出 quad_hexagram + 分层校准升级
+
+- **1) 工具层透出（改 `tools/yijing/divine.mjs` / `tools/yijing/report.mjs`）**
+  - `yijing_divine` 紧凑输出新增 `quad_hexagram` 摘要：四卦 `{label,name,yang,tone}` + 一致性结论 + `text`（quad_text 总述）；
+    detail 模式 v0.7.0 起已透传全量 quad。非 stock-trend 型剧本摘要为 null（诚实降级）。
+  - `yijing_report` 报告文本新增【四连卦】段（四卦判词 + 一致性），motor-design 等不支持剧本自动省略。
+  - 新增 5 条断言（divine 摘要结构/文本、report 段落、降级省略）。
+
+- **2) 分层校准升级（改 `scripts/calibrate_stock_baselines.mjs`）**
+  - 抽样从纯随机改为**分层配额抽样**：市值带(<50/50-200/200-1000/>1000亿) × 涨跌带(≤-2/-2~0/0~2/≥2%)
+    非空层按可得量比例配额（每层 ≥1，确定性种子），避免随机撒样在某一市值/动量层过采样。
+  - `meta.strata` 新增分层审计：各层宫分 p50、跨层极差（`domain_p50_spread_across_strata`）——
+    本次实测极差 0~0.5（JS/ZJ/XX 层间分化显著），为阶段 5「按层阈值」预留证据。
+  - 新增**四连卦分组基线回验**（基线定稿后二遍确定性推演，零额外网络）：统计 di/si/ci/xi 卦种入 meta。
+    修复回验用无 NA 标记 db 的统计污染（NA 当阴计入分组阳率 → 卦种坍缩 2 种；修复后 di 49/si 31/ci 45/xi 29）。
+  - 400 只分层样本重校准：单卦 49/64 种、每爻阳率与 v0.7.0 基线一致（58.8%~85.3%，无分层回归）；
+    xi.6（催化）全市场冻结 → 恒阴。
+
+- **验证**：`verify.mjs` PASS + 9 测试套件全绿 + `runtime-check.mjs` PASS。
+
 ## 0.7.0 (2026-10-22)
 ### 四连卦纵向展开（阶段 1，纯加法）：同一 384 检查点的四正交投影 + 分组基线消恒阳
 

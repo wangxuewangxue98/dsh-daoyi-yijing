@@ -110,5 +110,22 @@ const quad = resolveQuadHexagram(db, evals, script, baselines, agg)
   ok(r3.quad_hexagram === null, `motor-design（7 字符 id）→ quad_hexagram=null 诚实降级（实际 ${r3.quad_hexagram === null ? 'null' : '非 null'}）`)
 }
 
+// ---- 7. 工具层透出（v0.7.1）：divine 紧凑摘要 + report 文本段 ----
+{
+  const { runYijingDivine } = await import('../tools/yijing/divine.mjs')
+  const { runYijingReport } = await import('../tools/yijing/report.mjs')
+  const out = await runYijingDivine({ matter: '测试事项', script: 'stock-trend', inputs: {} }, {})
+  ok(out.quad_hexagram && out.quad_hexagram.hex_di && out.quad_hexagram.hex_ci,
+    'divine 紧凑输出含 quad_hexagram 摘要（四卦名+阳数+tone）')
+  ok(typeof out.quad_hexagram.text === 'string' && out.quad_hexagram.text.includes('【四连卦】'),
+    'divine 紧凑输出 quad_hexagram.text 含四连卦总述')
+  ok(out.quad_hexagram.hex_si && typeof out.quad_hexagram.hex_si.name === 'string',
+    'divine 摘要含卦②子域位卦名')
+  const rep = await runYijingReport({ matter: '测试事项', script: 'stock-trend', inputs: {} }, {})
+  ok(rep.text.includes('【四连卦】'), 'yijing_report 报告文本含【四连卦】段')
+  const repMotor = await runYijingReport({ matter: '测试事项', script: 'motor-design', inputs: {} }, {})
+  ok(!repMotor.text.includes('【四连卦】'), 'motor-design 报告不出四连卦段（诚实降级）')
+}
+
 console.log(fail === 0 ? '\nRESULT: PASS' : `\nRESULT: FAIL (${fail})`)
 process.exit(fail === 0 ? 0 : 1)

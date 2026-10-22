@@ -4,6 +4,7 @@ import { evaluate } from '../../lib/yijing/reviewer.mjs'
 import { getBuiltinScript } from '../../lib/yijing/checkpoints.mjs'
 import { loadCustomScript } from '../../lib/yijing/registry.mjs'
 import { buildEffectiveConfig } from './divine.mjs'
+import { quadText } from '../../lib/yijing/quad-hexagram.mjs'
 
 export const TOOL_PARAMS = {
   matter: { type: 'string', description: '决策事项（同 yijing_divine）' },
@@ -43,6 +44,9 @@ function formatReport(result) {
         '｜LLM 额度 ' + (q.enabled === false ? '闸门关闭' : `${q.used}/${q.limit} 次/天（余 ${q.remaining}）`),
     )
     if (result.llm.quota_blocked) lines.push('【额度提示】' + result.llm.notice)
+  }
+  if (result.quad_hexagram && result.quad_hexagram.hexes) {
+    lines.push(quadText(result.quad_hexagram)) // 四连卦（stock-trend 型剧本；其他剧本 null 不出段）
   }
   lines.push('【结论文案】\n' + result.conclusion_text)
   return lines.join('\n')
