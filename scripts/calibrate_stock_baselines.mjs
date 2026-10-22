@@ -18,10 +18,12 @@ import { parseCp, resolveQuadHexagram } from '../lib/yijing/quad-hexagram.mjs'
 import { familyOf } from '../lib/yijing/subfamily-map.mjs'
 import { fetchQuotes, quoteToSignals, createCurlFetcher } from '../adapters/quote.mjs'
 import { buildStockInputs, signalsToInputs } from '../adapters/stock-inputs.mjs'
+import { capBand, pctBand, stratumOfQuote } from '../lib/yijing/baselines.mjs'
 
 // 与 checkpoints.mjs buildStockScript 的 ASPECTS 严格一致（ci→aspect 名，供 familyOf 使用）
 const ASPECTS = ['强度', '持续性', '确定性', '边际变化', '安全边际', '催化']
 const aspectNameOf = (id) => ASPECTS[Number(id.slice(4, 6)) - 1] || null
+const stratumOf = stratumOfQuote // 分层带定义单一事实源（baselines.mjs，调用同源）
 
 // ── 参数 ──
 const argOf = (name, dflt) => {
@@ -71,12 +73,6 @@ function buildCandidatePool(seed) {
 }
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x))
-// ── v0.7.1 分层定义：市值带 × 涨跌带（行情快照可得字段；避免随机撒样在某层过采样）──
-const capBand = (v) =>
-  v == null ? 'u_未知' : v < 50 ? 'a_<50亿' : v < 200 ? 'b_50-200亿' : v < 1000 ? 'c_200-1000亿' : 'd_>1000亿'
-const pctBand = (v) =>
-  v == null ? 'u_未知' : v <= -2 ? 'a_≤-2%' : v < 0 ? 'b_-2~0%' : v < 2 ? 'c_0~2%' : 'd_≥2%'
-const stratumOf = (q) => `${capBand(q.totalCap)}|${pctBand(q.pct)}`
 function percentile(sorted, p) {
   if (!sorted.length) return null
   const idx = (sorted.length - 1) * p
@@ -116,16 +112,16 @@ async function main() {
 
   // v0.7.1 分层抽样：非空层按配额比例分配 N_TARGET（每层至少 1 只），避免随机撒样的层间过采样
   const rndPick = mulberry32(SEED ^ 0x9e3779b9)
-  const strataCells = new Map()
+  const strataMap = new Map()
   for (const c of codes) {
     const s = stratumOf(quotes.get(c))
-    if (!strataCells.has(s)) strataCells.set(s, [])
-    strataCells.get(s).push(c)
+    if (!strataMap.has(s)) strataMap.set(s, [])
+    strataMap.get(s).push(c)
   }
   const nTarget = Math.min(N_TARGET, codes.length)
   const selected = []
   const quotaInfo = []
-  for (const [s, arr] of strataCells) {
+  for (const [s, arr] of strataMap) {
     // 随机打乱层内顺序（确定性种子）
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(rndPick() * (i + 1))
@@ -150,14 +146,14 @@ async function main() {
     }
   }
   console.log(
-    `  分层 ${strataCells.size} 层，配额抽样 ${selected.length} 只（` +
+    `  分层 ${strataMap.size} 层，配额抽样 ${selected.length} 只（` +
       quotaInfo
         .slice()
         .sort((a, b) => b.available - a.available)
         .slice(0, 5)
         .map((x) => `${x.stratum}:${x.quota}/${x.available}`)
         .join('，') +
-      (strataCells.size > 5 ? '…' : '') +
+      (strataMap.size > 5 ? '…' : '') +
       `）`,
   )
   codes.length = 0
@@ -176,7 +172,9 @@ async function main() {
   const script0 = buildStockScript()
   const db = buildCheckpointDatabase(script0)
   // 分组基线累加器（si 子域位 / ci 业务族 / xi aspect）：跨股票收集「每只股票每组阳率」
+  // groupsAccStratum：同口径按 stratum 分层收集（v0.7.2 按层阈值）
   const groupsAcc = { si: {}, ci: {}, xi: {} }
+  const groupsAccStratum = {}
   const rows = []
   for (let i = 0; i < codes.length; i++) {
     const code = codes[i]
@@ -214,7 +212,10 @@ async function main() {
     }
     for (const dim of ['si', 'ci', 'xi']) {
       for (const [k, v] of Object.entries(perStock[dim])) {
-        ;(groupsAcc[dim][k] ||= []).push(v.c ? v.s / v.c : null)
+        const rate = v.c ? v.s / v.c : null
+        ;(groupsAcc[dim][k] ||= []).push(rate)
+        const byS = (groupsAccStratum[stratumOf(q)] ||= { si: {}, ci: {}, xi: {} })
+        ;(byS[dim][k] ||= []).push(rate)
       }
     }
     rows.push({
@@ -273,20 +274,45 @@ async function main() {
     }
   }
 
-  // v0.7.1 分层审计：各层宫分 p50 与总体的偏离（越小说明分层抽样后基线对各层代表越均衡）
-  const strataP50 = {}
+  // v0.7.2 分层阈值 cells（按层参照系）：每层域阈值 + 分组阈值；n<20 的层不产出（调用方回落总体）
+  const strataCells = {}
   for (const s of [...new Set(rows.map((r) => r.stratum))]) {
     const sub = rows.filter((r) => r.stratum === s)
-    const rec = {}
+    const acc = groupsAccStratum[s] || { si: {}, ci: {}, xi: {} }
+    const domain_thresholds = {}
     for (const c of domainCodes) {
       const vals = sub.map((r) => r.scores[c]).filter((v) => typeof v === 'number').sort((a, b) => a - b)
-      if (vals.length >= 5) rec[c] = fmt(percentile(vals, 0.5))
+      if (vals.length >= 5) domain_thresholds[c] = fmt(percentile(vals, 0.5))
     }
-    strataP50[s] = { n: sub.length, domain_p50: rec }
+    const group_thresholds = {}
+    for (const dim of ['si', 'ci', 'xi']) {
+      group_thresholds[dim] = {}
+      for (const [key, arr] of Object.entries(acc[dim])) {
+        const vals = arr.filter((v) => typeof v === 'number').sort((a, b) => a - b)
+        const distinct = new Set(vals).size
+        const frozen = distinct <= 1
+        group_thresholds[dim][key] = frozen
+          ? { frozen: true, n: vals.length }
+          : {
+              n: vals.length,
+              p25: fmt(percentile(vals, 0.25)),
+              p50: fmt(percentile(vals, 0.5)),
+              p75: fmt(percentile(vals, 0.75)),
+            }
+      }
+    }
+    strataCells[s] = { n: sub.length, domain_thresholds, group_thresholds }
+  }
+  // 分层审计：各层宫分 p50 与总体的偏离（跨层极差；越小说明总体阈值对各层代表越均衡）
+  const strataP50 = {}
+  for (const [s, cell] of Object.entries(strataCells)) {
+    strataP50[s] = { n: cell.n, domain_p50: { ...cell.domain_thresholds } }
   }
   const spread = {}
   for (const c of domainCodes) {
-    const ps = Object.values(strataP50).map((x) => x.domain_p50[c]).filter((v) => typeof v === 'number')
+    const ps = Object.values(strataP50)
+      .map((x) => x.domain_p50[c])
+      .filter((v) => typeof v === 'number')
     if (ps.length >= 2) spread[c] = Number((Math.max(...ps) - Math.min(...ps)).toFixed(4))
   }
 
@@ -373,6 +399,11 @@ async function main() {
     quantile: 'p50（卦象编码默认阈值）',
     domains,
     groups,
+    strata: {
+      definition:
+        '市值带(<50/50-200/200-1000/>1000亿)×涨跌带(≤-2/-2~0/0~2/≥2%)；层内 n<20 不产出阈值（调用方 baselinesForStratum 回落总体）',
+      cells: strataCells,
+    },
     meta: {
       rules_note:
         '宫分口径与 tools/yijing/divine.mjs 的行情自动路径完全一致（adapters/stock-inputs.mjs 共享）；' +
@@ -386,11 +417,11 @@ async function main() {
       hexagram_top8: top,
       quad_distinct_in_sample: quadDistinct,
       strata: {
-        definition: '市值带(<50/50-200/200-1000/>1000亿)×涨跌带(≤-2/-2~0/0~2/≥2%)，非空层配额抽样',
+        definition: '市值带(<50/50-200/200-1000/>1000亿)×涨跌带(≤-2/-2~0/0~2/≥2%)，非空层配额抽样；按层阈值见顶层 strata.cells（n<20 不产出）',
         cells: strataCells.size,
         per_stratum: strataP50,
         domain_p50_spread_across_strata: spread,
-        spread_note: '各层宫分 p50 的极差；越小说明分层抽样后基线对各市值/动量层代表越均衡',
+        spread_note: '各层宫分 p50 的极差；越大越需要按层阈值（v0.7.2 已落地顶层 strata.cells）',
       },
       yao_yang_ratio: yaoStats,
       entropy_note: '每爻阳率越接近 0.5，该爻信息量越大（满熵）；偏离越大越接近冻结',

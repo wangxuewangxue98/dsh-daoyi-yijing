@@ -5,21 +5,21 @@
   "entry": "index.mjs",
   "name": "dsh-daoyi-yijing",
   "displayName": "道一-易经推演",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "summary": "通用决策辅助：将决策事项拆解为可量化检查点，套入 384 爻→64 卦→8 宫→四象→三才→两仪→太极 六层推演，输出结构化结论与易经风格解读",
-  "description": "道一-易经推演 · 通用决策评审插件（决策辅助，非迷信）；复用成熟的六层加权聚合引擎（强关联一票否决 + 加权弱关联），内置电机电磁设计 / 股票趋势研判等剧本，支持自定义决策剧本；v0.3.4 接通真实云模型 LLM（OpenAI 兼容 + 6 厂商预设 + 自定义模型清单 + DSH 会话当前模型）；v0.4.0 修复 64 卦坍缩（真·64 卦动态映射 + verdict 连续化 + 否决策略收窄）；v0.4.2 免费 LLM 节流改为「每分钟速率上限（默认 10 次/60s 滑动窗口）+ 超出排队等待」；v0.5.0 补全 64 卦判词库（每卦独立判词+建议）并新增可选在线模式（adapters/quote.mjs 腾讯行情适配层：真实 PE/量价信号激活估值与技术域，断网自动回退 NA，离线核心不受影响）；v0.5.1 卦象编码改批次内分位数（满熵，冻结域恒阴消除 NA 偏阳）、ZJ 改用外盘/内盘净主动买入真实资金流（与涨跌%解耦）、对话中自动借用 DSH 会话当前大模型；v0.5.2 每个宫补到 2~5 个子域，有效爻 4→6、卦空间 16→64、实测卦种 11→28 且冻结域清零，修正五爻君位错位与八卦表震/巽标签互换，代理量不再拥有一票否决权；v0.6.0 单事项触达 64 卦——对话内 yijing_divine 可自动拉腾讯行情构建 384 爻 inputs（stockQuoteEnabled 开关），卦象编码阈值改「全市场校准基线分位」（lib/yijing/baselines.mjs + calibrate_stock_baselines.mjs，400 只样本实测 48/64 种、每爻阳率 35~70%），新增 yijing_factor_prompt 工具把 L1→L7 八宫打分交给对话大模型并回填 inputs（宫级简写 + origin 归一化语义），输入画像新增 unmatched 审计与 degraded 低置信标记（错宫码/缺输入不再静默出 100% 可行），修复腾讯响应 GBK 中文乱码与 fetchIndexQuotes 漏解码 Buffer 致 HY 宫整宫 NA；v0.7.0 四连卦纵向展开（纯加法）：stock-trend 推演返回值新增 quad_hexagram——同一 384 检查点按 域/子域位/业务族(L·T·S·M·R·C)/爻位 四个正交轴各投影成 6 爻卦，爻阈值取分组基线 p50（subfamily-map.mjs 六业务族启发式映射 + baselines groups 分组基线，冻结组恒阴），含四卦 tone 一致性矩阵与 quad_text 总述，非 stock-trend 型 id 剧本诚实降级为 null；分组基线由 calibrate_stock_baselines.mjs 重校准（400 只样本），新增 scripts/test_quad_hexagram.mjs（12 断言）；v0.7.1 工具层透出 + 分层校准：yijing_divine 紧凑输出新增 quad_hexagram 摘要（四卦名+阳数+tone+一致性+quad_text 总述）、yijing_report 报告文本新增【四连卦】段（非 stock-trend 剧本自动省略）；校准升级为分层配额抽样（市值带×涨跌带 15 层，meta.strata 记录各层宫分 p50 极差审计）并新增四连卦分组基线回验（修复回验用无 NA 标记 db 致 NA 当阴的统计污染），400 只样本实测卦种 di 49/si 31/ci 45/xi 29",
+  "description": "道一-易经推演 · 通用决策评审插件（决策辅助，非迷信）；复用成熟的六层加权聚合引擎（强关联一票否决 + 加权弱关联），内置电机电磁设计 / 股票趋势研判等剧本，支持自定义决策剧本；v0.3.4 接通真实云模型 LLM（OpenAI 兼容 + 6 厂商预设 + 自定义模型清单 + DSH 会话当前模型）；v0.4.0 修复 64 卦坍缩（真·64 卦动态映射 + verdict 连续化 + 否决策略收窄）；v0.4.2 免费 LLM 节流改为「每分钟速率上限（默认 10 次/60s 滑动窗口）+ 超出排队等待」；v0.5.0 补全 64 卦判词库（每卦独立判词+建议）并新增可选在线模式（adapters/quote.mjs 腾讯行情适配层：真实 PE/量价信号激活估值与技术域，断网自动回退 NA，离线核心不受影响）；v0.5.1 卦象编码改批次内分位数（满熵，冻结域恒阴消除 NA 偏阳）、ZJ 改用外盘/内盘净主动买入真实资金流（与涨跌%解耦）、对话中自动借用 DSH 会话当前大模型；v0.5.2 每个宫补到 2~5 个子域，有效爻 4→6、卦空间 16→64、实测卦种 11→28 且冻结域清零，修正五爻君位错位与八卦表震/巽标签互换，代理量不再拥有一票否决权；v0.6.0 单事项触达 64 卦——对话内 yijing_divine 可自动拉腾讯行情构建 384 爻 inputs（stockQuoteEnabled 开关），卦象编码阈值改「全市场校准基线分位」（lib/yijing/baselines.mjs + calibrate_stock_baselines.mjs，400 只样本实测 48/64 种、每爻阳率 35~70%），新增 yijing_factor_prompt 工具把 L1→L7 八宫打分交给对话大模型并回填 inputs（宫级简写 + origin 归一化语义），输入画像新增 unmatched 审计与 degraded 低置信标记（错宫码/缺输入不再静默出 100% 可行），修复腾讯响应 GBK 中文乱码与 fetchIndexQuotes 漏解码 Buffer 致 HY 宫整宫 NA；v0.7.0 四连卦纵向展开（纯加法）：stock-trend 推演返回值新增 quad_hexagram——同一 384 检查点按 域/子域位/业务族(L·T·S·M·R·C)/爻位 四个正交轴各投影成 6 爻卦，爻阈值取分组基线 p50（subfamily-map.mjs 六业务族启发式映射 + baselines groups 分组基线，冻结组恒阴），含四卦 tone 一致性矩阵与 quad_text 总述，非 stock-trend 型 id 剧本诚实降级为 null；分组基线由 calibrate_stock_baselines.mjs 重校准（400 只样本），新增 scripts/test_quad_hexagram.mjs（12 断言）；v0.7.1 工具层透出 + 分层校准：yijing_divine 紧凑输出新增 quad_hexagram 摘要（四卦名+阳数+tone+一致性+quad_text 总述）、yijing_report 报告文本新增【四连卦】段（非 stock-trend 剧本自动省略）；校准升级为分层配额抽样（市值带×涨跌带 15 层，meta.strata 记录各层宫分 p50 极差审计）并新增四连卦分组基线回验（修复回验用无 NA 标记 db 致 NA 当阴的统计污染），400 只样本实测卦种 di 49/si 31/ci 45/xi 29；v0.7.2 按层阈值（阶段5）：行情快照的市值带×涨跌带 stratum → 层内阈值优先（baselinesForStratum，层内 n<20 或缺失诚实回落总体），基线顶层 strata.cells 落 15 层域+分组阈值，hexEncoding 标注 baseline:stratum/baseline，56 只实测 32 只进层、单卦改判 15 只而 verdict 零改判、四卦卦种 ci 21→23",
   "permissions": ["fs-read", "fs-write", "network", "env"],
   "license": "MIT",
   "author": "Motor-AI",
   "plugin_id": "dsh-daoyi-yijing",
-  "skill_version": "0.7.1",
+  "skill_version": "0.7.2",
   "channel": "daoyi",
   "tier": "free",
   "skills": [
     {
       "name": "daoyi-divine",
       "path": "skills/daoyi-divine/SKILL.md",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "description": "道一-易经推演决策辅助技能"
     }
   ],

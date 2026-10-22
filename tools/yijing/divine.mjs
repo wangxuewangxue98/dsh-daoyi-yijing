@@ -4,6 +4,7 @@ import { getBuiltinScript } from '../../lib/yijing/checkpoints.mjs'
 import { loadCustomScript } from '../../lib/yijing/registry.mjs'
 import { extractCodes, buildStockInputs } from '../../adapters/stock-inputs.mjs'
 import { loadBaselines, thresholdsFromBaselines } from '../../lib/yijing/baselines.mjs'
+import { stratumOfQuote, stratumThresholdsFromBaselines, baselinesForStratum } from '../../lib/yijing/baselines.mjs'
 import { quadText } from '../../lib/yijing/quad-hexagram.mjs'
 
 export const TOOL_PARAMS = {
@@ -130,6 +131,7 @@ export async function runYijingDivine(args = {}, config = {}) {
   let quoteMeta = null
   let hexThresholds = null
   let hexEncoding = 'absolute'
+  let stratumBaselines = null // v0.7.2 按层基线（四连卦用）；无行情/无分层时 null → 回落总体
 
   // 行情自动路径：stock-trend + 无检查点级 inputs + 解析到代码 → 拉腾讯行情构建 inputs
   const isStockScript = scriptArg && scriptArg.script_id === 'stock-trend'
@@ -161,8 +163,19 @@ export async function runYijingDivine(args = {}, config = {}) {
           if (args.hexEncoding !== 'absolute') {
             const bl = loadBaselines('stock-trend', { file: config.stockBaselinesPath || undefined })
             if (bl) {
-              hexThresholds = thresholdsFromBaselines(bl, 'p50')
-              hexEncoding = 'baseline'
+              // v0.7.2 按层阈值：行情快照即可知 stratum（市值带×涨跌带）→ 层内阈值优先；缺层/小样本回落总体
+              const stratum = stratumOfQuote(hit.quote)
+              const cell = stratumThresholdsFromBaselines(bl, stratum)
+              if (cell) {
+                hexThresholds = cell.domains
+                stratumBaselines = baselinesForStratum(bl, stratum)
+                hexEncoding = 'baseline:stratum'
+              } else {
+                hexThresholds = thresholdsFromBaselines(bl, 'p50')
+                hexEncoding = 'baseline'
+              }
+              quoteMeta.stratum = stratum
+              quoteMeta.stratum_used = Boolean(cell)
             }
           }
         } else {
@@ -184,6 +197,7 @@ export async function runYijingDivine(args = {}, config = {}) {
   const result = await evaluate(matter, scriptObj || 'motor-design', {
     inputs,
     hexThresholds,
+    baselines: stratumBaselines || undefined,
     reportStyle: args.reportStyle || config.reportStyle || 'classic',
     config: effectiveConfig,
   })
@@ -227,7 +241,7 @@ export async function runYijingDivine(args = {}, config = {}) {
     },
     // 无任何有效输入 → 结论由缺值兜底产生，明确标注低置信（不得当作真实研判）
     degraded: inputsSource === 'none' || (result.inputs_coverage || {}).coverage < 0.5,
-    hex_encoding: { source: hexEncoding, baseline_used: hexEncoding === 'baseline' },
+    hex_encoding: { source: hexEncoding, baseline_used: hexEncoding.startsWith('baseline') },
     quad_hexagram: compactQuad(result.quad_hexagram),
     llm: compactLlm(result.llm),
   }

@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## 0.7.2 (2026-10-22)
+### 按层阈值（阶段 5）：stratum 参照系落地
+
+> 动机：v0.7.1 分层校准审计实测宫分 p50 跨层极差 0.26~0.5（JS/ZJ/XX）——同一「全市场中位」
+> 对小盘成长与大盘蓝筹语义不同。行情快照可直接得知层（市值带×涨跌带），故阈值可按层取。
+
+- **1) baselines.mjs 新增分层 API**
+  - `capBand/pctBand/stratumOfQuote`：分层带定义单一事实源（校准与调用共用，防两处漂移）。
+  - `stratumThresholdsFromBaselines`：层阈值解析（域阈值扁平数值/分组对象两种形状都收）；
+    层缺失、n<20（小样本防噪）、无分位 → null 回落总体；层内冻结组 → Infinity 恒阴。
+  - `baselinesForStratum`：层阈值包装成与 loadBaselines 同构对象（供 resolveQuadHexagram 直接吃），
+    分组缺键回落总体 groups（不用绝对 0.5）。
+
+- **2) 校准输出 strata.cells（改 calibrate_stock_baselines.mjs）**
+  - 顶层 `strata.cells[stratum] = {n, domain_thresholds, group_thresholds{si,ci,xi}}`；
+    400 只分层样本：15 层、7 层可用（n≥20），JS 层内阈值 0.35~0.708（总体 0.433）。
+  - 修复抽样/输出两处 `strataCells` 同名冲突（SyntaxError）——抽样侧改名 strataMap。
+
+- **3) 工具层接入（改 tools/yijing/divine.mjs）**
+  - 行情路径：stratum 由 quote.totalCap/pct 计算 → 层阈值优先（hexThresholds=层域阈值，
+    evaluate 注入层 baselines 驱动四连卦）；`hexEncoding` 标注 `baseline:stratum` / `baseline`；
+    quoteMeta 增 stratum/stratum_used 可审计。absolute 模式不变（层阈值只服务 baseline 语义）。
+
+- **4) 测试与实测**
+  - 新 `scripts/test_stratum_thresholds.mjs`：18 断言（带边界、解析、回落链、四连卦接线、缺键回落）。
+    修复域阈值形状误读 bug（扁平数值被当对象读 → 全落空，测试抓到）。
+  - 56 只 A/B 取证（output/stratum_threshold_compare_results.json）：32/56 进层（24 只所在层 n<20 诚实回落）；
+    单卦改判 15 只、四卦任一改判 30 只、**verdict 零改判**（语义稳定仅参照系细化）；
+    四卦卦种 ci 21→23、si 19→20（层内分化更充分），xi 15→13。
+  - 质量门：verify + 10 测试套件 + runtime-check 全绿。
+
+- **边界（诚实披露）**：单日 400 样本下 8/15 层 n<20 用不了；大市值×平涨层（茅台所在层 n=4）回落总体——
+  分层阈值的完全收益需多日累积校准（阶段 5 后续）。
+
 ## 0.7.1 (2026-10-22)
 ### 工具层透出 quad_hexagram + 分层校准升级
 
