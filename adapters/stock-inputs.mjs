@@ -73,6 +73,54 @@ export function signalsToInputs(signals, db = buildCheckpointDatabase(buildStock
   return { inputs, naIds, activeDomains }
 }
 
+/**
+ * v2（1296 / stock-trend-v2）版 inputs 构建（阶段 2 / S3，v0.8.0）。
+ * 与 signalsToInputs 的差异：
+ *   ① 迁移映射：384 形态信号（子域码 JS01..FX08）经 migrationMap 汇聚到 36 分域
+ *      （同分域多子域信号取均值；无信号分域 → 全部 NA，不造假）；
+ *   ② aspect 位取 id **末两位**（8 位 id 的第 7-8 位；6 位口径取 5-7 位，勿混）；
+ *   ③ 粒度 = 分域级（L2）：每分域 36 项同 delta 铺开——卦②/卦③激活、卦④同质
+ *      （文档化局限；L3 子域级数据由 llm-scoring.mjs 补分升级）。
+ * @param {Array} signals quoteToSignals 产物（384 形态）
+ * @param {object} db buildCheckpointDatabase(v2Script)
+ * @param {Record<string,string>} migrationMap 旧子域码 → 新分域码（v2.migrated_from.mapping）
+ */
+export function signalsToInputsV2(signals, db, migrationMap) {
+  // ① 迁移汇聚：旧子域码 → 分域 delta 均值
+  const acc = new Map() // 分域码 → {sum, n}
+  for (const s of signals || []) {
+    const oldSub = `${s.code}${String(s.subIdx + 1).padStart(2, '0')}`
+    const target = (migrationMap || {})[oldSub]
+    if (!target) continue // 无迁移目标的信号丢弃（不猜）
+    if (!acc.has(target)) acc.set(target, { sum: 0, n: 0 })
+    acc.get(target).sum += s.delta
+    acc.get(target).n += 1
+  }
+  const subDelta = new Map()
+  for (const [k, v] of acc) subDelta.set(k, v.sum / v.n)
+  // ② 铺开到 1296 检查点（aspect 位 = id 末两位）
+  const inputs = {}
+  const naIds = []
+  for (const cp of db.checkpoints) {
+    if (cp.na) {
+      naIds.push(cp.id)
+      continue
+    }
+    const subKey = cp.id.slice(0, 4) // 分域码
+    const delta = subDelta.get(subKey)
+    if (delta === undefined) {
+      naIds.push(cp.id)
+      continue
+    }
+    const ai = Number(cp.id.slice(6, 8)) - 1 // aspect 位 0..5（8 位 id 末两位）
+    inputs[cp.id] = Number(
+      clamp(0.5 + delta * ASPECT_COEFS[ai] + ASPECT_BIAS[ai], 0.02, 0.98).toFixed(4),
+    )
+  }
+  const activeDomains = [...new Set([...subDelta.keys()].map((k) => k.slice(0, 2)))]
+  return { inputs, naIds, activeDomains, migratedSubdomains: subDelta.size }
+}
+
 /** 取数器解析：显式 fetcher > 代理环境 curl > 全局 fetch（quote.mjs 默认） */
 function resolveFetcher(opts = {}) {
   if (typeof opts.fetcher === 'function') return opts.fetcher
@@ -83,9 +131,10 @@ function resolveFetcher(opts = {}) {
 }
 
 /**
- * 拉行情并为每只股票构建 384 爻 inputs（对话单只 / 校准批量共用）。
+ * 拉行情并为每只股票构建 inputs（对话单只 / 校准批量共用）。
  * @param {string[]} codes 6 位代码
  * @param {object} opts fetchQuotes/fetchIndexQuotes 透传（fetcher/timeoutMs/indexSymbols）+ sectorPctOf(code)
+ *   + inputsBuilder(signals, {db, migrationMap}) 自定义 inputs 构建（v2 剧本用 signalsToInputsV2）
  * @returns {{byCode: Map<string,{quote,signals,inputs,naIds,activeDomains}>,
  *            meta:{requested,fetched,error,indexContext,indexError,rules,sector_proxy}}}
  */
@@ -121,7 +170,8 @@ export async function buildStockInputs(codes, opts = {}) {
       sectorAmountWan: undefined,
       indexCtx: indexContext,
     })
-    byCode.set(code, { quote: q, name: q.name, signals, ...signalsToInputs(signals) })
+    const buildInputs = opts.inputsBuilder || ((sig) => signalsToInputs(sig))
+    byCode.set(code, { quote: q, name: q.name, signals, ...buildInputs(signals, { db: opts.db, migrationMap: opts.migrationMap }) })
   }
 
   return {

@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 0.8.0 (2026-10-22)
+### 阶段 2：1296 四层剧本 + LLM 子域级评分流水线（S1–S5）
+
+> 定位：把附件已验证的 `stock-trend-v2`（6⁴=1296 四连卦）与 P4 LLM 评分管线在本仓库原生重建；
+> 与旧 384（stock-trend）**并行注册、默认不启用**（显式 `script:'stock-trend-v2'` 开启），旧剧本行为零触。
+> 核心实证：行情数据只到分域粒度（L2）→ 卦③（子域位）坍缩为 2 种——「瓶颈在数据不在结构」复现，
+> LLM L3 子域级补分是激活前提（管线已离线验证，上线只差端点）。
+
+- **S1 剧本**：新 `lib/yijing/scripts/stock-trend-v2.mjs`（6 域×6 分域×6 子域×6 aspect=1296，8 位 id；
+  hex_order=JS/ZJ/XX/FX/JB/HY 六域全进卦；is_strong 204 含 FX02/XX06 代理豁免；migrated_from 64→36 机器可读）；
+  新 `scripts/test_stock_trend_v2.mjs`（52 断言：四刀互斥并集/迁移 64/64/384 零触）。
+- **S2 聚合泛化**：`quad-hexagram.mjs` parseCp 8 位双口径 + structureModeOf 结构守卫 + 模式分流；
+  `hexagram.mjs` buildOrderFromScript 加法支持 hex_order；一致性矩阵新增 base_hex（分歧时以卦①为基准趋势卦）；
+  quadText 结构自适应（384/1296）。384 golden 逐位回归不变。
+- **S3 LLM 流水线**：新 `lib/yijing/llm-scoring.mjs`（L2 分域 6 问 / L3 子域×aspect 36 问；
+  parseScoreReply 防幻觉——围栏容忍/越界拒收/缺键 NA；行情优先合并；acquireLlmRateLimit 节流；
+  无端点/超时/抛错诚实降级）；`divine.mjs` 新增 `llmLevel:'none'|'L2'|'L3'`（仅 v2 剧本）；
+  新 `scripts/test_llm_scoring.mjs`（29 断言全离线桩验证）。
+- **S4 基线**：`calibrate_stock_baselines.mjs --script stock-trend-v2`；新 `baselines-stock-v2.json`
+  （400 只：单卦 56/64；四卦回验 di 56/si 55/ci 2/xi 16）；baselines.mjs 按剧本分文件防混用。
+- **S5 三代对照**（56 只同源快照）：A(384) vs B(1296+L2) verdict 一致率 94.6%（1/42/13 vs 1/45/10，迁移保真）；
+  四卦全不同；B 卦③=2 种（L2 粒度极限实证）→ 1296 不设默认剧本；C 代（L3）管线就绪待端点。
+- 质量门：verify + 12 测试套件 + runtime-check 全绿零回归。
+
 ## 0.7.2 (2026-10-22)
 ### 按层阈值（阶段 5）：stratum 参照系落地
 

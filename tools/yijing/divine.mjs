@@ -1,11 +1,13 @@
 // divine.mjs — 工具 yijing_divine（主入口）
 import { evaluate } from '../../lib/yijing/reviewer.mjs'
-import { getBuiltinScript } from '../../lib/yijing/checkpoints.mjs'
+import { getBuiltinScript, buildCheckpointDatabase } from '../../lib/yijing/checkpoints.mjs'
 import { loadCustomScript } from '../../lib/yijing/registry.mjs'
-import { extractCodes, buildStockInputs } from '../../adapters/stock-inputs.mjs'
+import { extractCodes, buildStockInputs, signalsToInputsV2 } from '../../adapters/stock-inputs.mjs'
 import { loadBaselines, thresholdsFromBaselines } from '../../lib/yijing/baselines.mjs'
 import { stratumOfQuote, stratumThresholdsFromBaselines, baselinesForStratum } from '../../lib/yijing/baselines.mjs'
 import { quadText } from '../../lib/yijing/quad-hexagram.mjs'
+import { callCloudModel } from '../../lib/yijing/cloud-model.mjs'
+import { runLlmScoring, buildEvidencePack, mergeLlmScores } from '../../lib/yijing/llm-scoring.mjs'
 
 export const TOOL_PARAMS = {
   matter: {
@@ -15,7 +17,7 @@ export const TOOL_PARAMS = {
   },
   script: {
     oneOf: [
-      { type: 'string', description: '剧本 id：内置 motor-design / stock-trend / demo-384 / commercial，或已加载自定义剧本 id' },
+      { type: 'string', description: '剧本 id：内置 motor-design / stock-trend(384) / stock-trend-v2(1296 四层) / demo-384 / commercial，或已加载自定义剧本 id' },
       { type: 'object', additionalProperties: true, description: '自定义剧本 JSON 对象（含 script_id / name / domains[]）' },
     ],
     description: '剧本 id（内置/已加载自定义）或自定义剧本 JSON 对象；缺省走默认剧本 motor-design',
@@ -36,6 +38,13 @@ export const TOOL_PARAMS = {
   useQuote: {
     type: 'boolean',
     description: '是否允许自动拉行情（默认 true，仅 stock-trend 剧本且解析到代码时生效；config.stockQuoteEnabled=false 可全局关）',
+  },
+  llmLevel: {
+    type: 'string',
+    enum: ['none', 'L2', 'L3'],
+    description:
+      '可选（仅 stock-trend-v2）：LLM 子域级补分档位。L2=分域级 6 次 prompt（约 36 秒）；L3=子域×aspect 36 次 prompt（约 3.6 分钟，四刀全激活）。' +
+      '行情信号优先，LLM 只补 NA 缺口；无云模型端点/超时/解析失败 → 该键缺分（NA），不造假',
   },
   hexEncoding: {
     type: 'string',
@@ -133,8 +142,9 @@ export async function runYijingDivine(args = {}, config = {}) {
   let hexEncoding = 'absolute'
   let stratumBaselines = null // v0.7.2 按层基线（四连卦用）；无行情/无分层时 null → 回落总体
 
-  // 行情自动路径：stock-trend + 无检查点级 inputs + 解析到代码 → 拉腾讯行情构建 inputs
-  const isStockScript = scriptArg && scriptArg.script_id === 'stock-trend'
+  // 行情自动路径：股票系剧本（stock-trend 384 / stock-trend-v2 1296）+ 无检查点级 inputs + 解析到代码
+  const isStockScript = scriptArg && (scriptArg.script_id === 'stock-trend' || scriptArg.script_id === 'stock-trend-v2')
+  const isV2Script = scriptArg && scriptArg.script_id === 'stock-trend-v2'
   if (isStockScript && !hasCheckpointInputs && config.stockQuoteEnabled !== false && args.useQuote !== false) {
     const raw = args.symbols ?? args.symbol ?? null
     let codes = raw
@@ -143,7 +153,14 @@ export async function runYijingDivine(args = {}, config = {}) {
     codes = [...new Set(codes.map((c) => String(c).replace(/\D/g, '')).filter(Boolean))]
     if (codes.length) {
       try {
-        const { byCode, meta } = await buildStockInputs([codes[0]])
+        // v2（1296）：行情信号经迁移映射填 36 分域（L2 粒度）；384：原口径
+        const { byCode, meta } = isV2Script
+          ? await buildStockInputs([codes[0]], {
+              db: buildCheckpointDatabase(scriptArg),
+              migrationMap: scriptArg.migrated_from ? scriptArg.migrated_from.mapping : {},
+              inputsBuilder: (signals, ctx) => signalsToInputsV2(signals, ctx.db, ctx.migrationMap),
+            })
+          : await buildStockInputs([codes[0]])
         const hit = byCode.get(codes[0])
         if (hit) {
           inputs = hit.inputs
@@ -160,8 +177,43 @@ export async function runYijingDivine(args = {}, config = {}) {
             sector_proxy: meta.sector_proxy,
             index_error: meta.indexError,
           }
+          // S3：LLM 子域级补分（llmLevel=L2/L3；行情信号优先，LLM 只补 NA 缺口；无端点/失败 → 诚实降级）
+          if ((args.llmLevel === 'L2' || args.llmLevel === 'L3') && isV2Script) {
+            try {
+              const pack = buildEvidencePack(hit.quote, meta.indexContext)
+              const llmCall = (messages, opts) => callCloudModel(messages, { ...opts, tool: opts && opts.purpose })
+              const run = await runLlmScoring({
+                script: scriptArg,
+                db: buildCheckpointDatabase(scriptArg),
+                pack,
+                llmCall,
+                level: args.llmLevel,
+                config: effectiveConfig,
+              })
+              const merged = mergeLlmScores(inputs, run.scores)
+              inputs = merged.inputs
+              // 补分的键从 NA 名单移除（已不是缺值）
+              scriptObj = {
+                ...scriptObj,
+                na: {
+                  domains: [],
+                  checkpoints: hit.naIds.filter((id) => run.scores[id] === undefined),
+                },
+              }
+              quoteMeta.llm_scoring = {
+                level: run.level,
+                degraded: run.degraded,
+                prompts: run.coverage.prompts,
+                filled: run.coverage.filled,
+                failed: run.coverage.failed,
+                added: merged.added,
+              }
+            } catch (e) {
+              quoteMeta.llm_scoring = { level: args.llmLevel, degraded: true, error: String((e && e.message) || e) }
+            }
+          }
           if (args.hexEncoding !== 'absolute') {
-            const bl = loadBaselines('stock-trend', { file: config.stockBaselinesPath || undefined })
+            const bl = loadBaselines(scriptArg.script_id, { file: config.stockBaselinesPath || undefined })
             if (bl) {
               // v0.7.2 按层阈值：行情快照即可知 stratum（市值带×涨跌带）→ 层内阈值优先；缺层/小样本回落总体
               const stratum = stratumOfQuote(hit.quote)

@@ -12,12 +12,13 @@
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpoints.mjs'
+import { buildStockTrendV2Script } from '../lib/yijing/scripts/stock-trend-v2.mjs'
 import { evaluateDeterministic } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript, buildOrderFromScript } from '../lib/yijing/hexagram.mjs'
 import { parseCp, resolveQuadHexagram } from '../lib/yijing/quad-hexagram.mjs'
 import { familyOf } from '../lib/yijing/subfamily-map.mjs'
 import { fetchQuotes, quoteToSignals, createCurlFetcher } from '../adapters/quote.mjs'
-import { buildStockInputs, signalsToInputs } from '../adapters/stock-inputs.mjs'
+import { buildStockInputs, signalsToInputs, signalsToInputsV2 } from '../adapters/stock-inputs.mjs'
 import { capBand, pctBand, stratumOfQuote } from '../lib/yijing/baselines.mjs'
 
 // 与 checkpoints.mjs buildStockScript 的 ASPECTS 严格一致（ci→aspect 名，供 familyOf 使用）
@@ -33,7 +34,12 @@ const argOf = (name, dflt) => {
 const hasFlag = (name) => process.argv.includes(`--${name}`)
 const N_TARGET = Number(argOf('n', 400))
 const SEED = Number(argOf('seed', 20261022))
-const OUT_FILE = argOf('out', fileURLToPath(new URL('../lib/yijing/baselines-stock.json', import.meta.url)))
+// S2/S4：--script stock-trend-v2 校准 1296 剧本（分组维度 = 分域位/子域位/aspect 位，8 位 id）
+const SCRIPT_ID = argOf('script', 'stock-trend')
+const IS_V2 = SCRIPT_ID === 'stock-trend-v2'
+const OUT_FILE = IS_V2
+  ? argOf('out', fileURLToPath(new URL('../lib/yijing/baselines-stock-v2.json', import.meta.url)))
+  : argOf('out', fileURLToPath(new URL('../lib/yijing/baselines-stock.json', import.meta.url)))
 // --curl：代理环境注入 curl fetcher（undici 不读代理环境变量；与 A/B 实测同款通道）
 const CURL_PROXY = hasFlag('curl') ? (process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.https_proxy || process.env.http_proxy || undefined) : undefined
 
@@ -169,8 +175,18 @@ async function main() {
     console.log(`  指数基准：${indexContext.name}(${indexContext.symbol}) 涨跌 ${indexContext.pct}%`)
   }
 
-  const script0 = buildStockScript()
+  const script0 = IS_V2 ? buildStockTrendV2Script() : buildStockScript()
   const db = buildCheckpointDatabase(script0)
+  const migrationMap = script0.migrated_from ? script0.migrated_from.mapping : {}
+  const buildInputsFor = (q) => {
+    const sigs = quoteToSignals(q, {
+      sectorPct: indexContext && Number.isFinite(indexContext.pct) ? indexContext.pct : undefined,
+      sectorAmountWan: undefined,
+      indexCtx: indexContext,
+    })
+    // v2：384 形态信号经迁移映射填 36 分域（L2 粒度）；384：原子域口径
+    return IS_V2 ? signalsToInputsV2(sigs, db, migrationMap) : signalsToInputs(sigs, db)
+  }
   // 分组基线累加器（si 子域位 / ci 业务族 / xi aspect）：跨股票收集「每只股票每组阳率」
   // groupsAccStratum：同口径按 stratum 分层收集（v0.7.2 按层阈值）
   const groupsAcc = { si: {}, ci: {}, xi: {} }
@@ -179,14 +195,7 @@ async function main() {
   for (let i = 0; i < codes.length; i++) {
     const code = codes[i]
     const q = quotes.get(code)
-    const built = signalsToInputs(
-      quoteToSignals(q, {
-        sectorPct: indexContext && Number.isFinite(indexContext.pct) ? indexContext.pct : undefined,
-        sectorAmountWan: undefined,
-        indexCtx: indexContext,
-      }),
-      db,
-    )
+    const built = buildInputsFor(q)
     const script = { ...script0, na: { domains: [], checkpoints: built.naIds } }
     // 确定性推演（不调 LLM：校准只求宫分分布，避免数百次撞免费 LLM 速率闸）；返回逐检查点阴阳用于分组基线
     const r = evaluateDeterministic(script, { inputs: built.inputs, returnEvaluations: true })
@@ -205,10 +214,18 @@ async function main() {
       const ev = r.evaluations && r.evaluations[cp.id]
       if (!ev) continue
       const y = ev.yinYang === 1 ? 1 : 0 // judgeYinYang 返回 +1/-1
-      const { di, si, ci } = parseCp(cp.id)
-      if (si >= 1 && si <= 6) acc('si', String(si), y)
-      acc('ci', familyOf(di, aspectNameOf(cp.id)), y)
-      if (ci >= 1 && ci <= 6) acc('xi', String(ci), y)
+      if (IS_V2) {
+        // 1296：si=分域位 / ci=子域位 / xi=aspect 位（id 位次原生 1-6）
+        const { si, ci, xi } = parseCp(cp.id)
+        if (si >= 1 && si <= 6) acc('si', String(si), y)
+        if (ci >= 1 && ci <= 6) acc('ci', String(ci), y)
+        if (xi >= 1 && xi <= 6) acc('xi', String(xi), y)
+      } else {
+        const { di, si, ci } = parseCp(cp.id)
+        if (si >= 1 && si <= 6) acc('si', String(si), y)
+        acc('ci', familyOf(di, aspectNameOf(cp.id)), y)
+        if (ci >= 1 && ci <= 6) acc('xi', String(ci), y)
+      }
     }
     for (const dim of ['si', 'ci', 'xi']) {
       for (const [k, v] of Object.entries(perStock[dim])) {
@@ -360,14 +377,7 @@ async function main() {
   const quadCount = { hex_di: {}, hex_si: {}, hex_ci: {}, hex_xi: {} }
   for (const row of rows) {
     const q = quotes.get(row.code)
-    const built = signalsToInputs(
-      quoteToSignals(q, {
-        sectorPct: indexContext && Number.isFinite(indexContext.pct) ? indexContext.pct : undefined,
-        sectorAmountWan: undefined,
-        indexCtx: indexContext,
-      }),
-      db,
-    )
+    const built = buildInputsFor(q)
     const script = { ...script0, na: { domains: [], checkpoints: built.naIds } }
     const r2 = evaluateDeterministic(script, { inputs: built.inputs, returnEvaluations: true })
     // ⚠ 必须用「带 NA 标记」的 db：quad-hexagram 按 cp.na 跳过 NA 检查点，
