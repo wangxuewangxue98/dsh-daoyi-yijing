@@ -111,6 +111,15 @@ export const TOOL_PARAMS = {
   },
 }
 
+// v0.9.2 P0：反向委托摘要放在工具描述第一行——工具 schema 是插件与对话模型唯一共享面，
+// 放第一句必被感知。链路：yijing_factor_prompt 取打分 prompt → 对话模型填分 → inputs 回传本工具，
+// 全程绕开 sessionModel/llm 服务、无需 API Key、费用计入当前对话会话。
+export const TOOL_DESCRIPTION =
+  '可调 yijing_factor_prompt 取八宫打分 prompt → 对话大模型填分 → 以 inputs 回传本工具（无需 API Key、费用计入当前对话）；' +
+  '易经推演-万事决 主入口：选剧本 → 分解决策事项为 384 关键因数 → 六层加权聚合 → 给出可定/否定结论' +
+  '（可行/有条件可行/不可行）。判定与聚合为确定性规则，云模型仅负责自然语言拆解与卦象文案翻译；' +
+  '可用 model 参数覆盖本次模型（厂商/自定义模型名/session）。'
+
 // 每次调用的模型覆盖：厂商 id / 自定义模型名 / 'session' → 合并出本次生效 config
 export function buildEffectiveConfig(config = {}, model) {
   const m = String(model || '').trim()
@@ -390,8 +399,46 @@ export async function runYijingDivine(args = {}, config = {}) {
     notice = notice ? notice + '\n' + extra : extra
   }
 
+  // v0.9.2 P1：降级结构化 next_action —— 模型见降级即知下一步调什么（反向委托闭环）。
+  // 凡 degraded（无有效输入 / 覆盖率<50% / LLM 补分降级）都给出「调 yijing_factor_prompt → 对话填分 →
+  // inputs 回填」这一条 100% 可行路径，把"无质量输入时的静默误报"转成"明确的下一步动作"。
+  const degradedReasons = []
+  if (inputsSource === 'none') {
+    degradedReasons.push(
+      quoteMeta && quoteMeta.error
+        ? `行情拉取失败（${quoteMeta.error}）`
+        : '未提供 symbols / inputs',
+    )
+  }
+  if (inputsSource !== 'none' && (result.inputs_coverage || {}).coverage < 0.5) {
+    degradedReasons.push(
+      `输入覆盖不足（coverage=${Number(((result.inputs_coverage || {}).coverage || 0)).toFixed(2)}），部分域缺值走兜底`,
+    )
+  }
+  if (quoteMeta && quoteMeta.llm_scoring && quoteMeta.llm_scoring.degraded) {
+    degradedReasons.push(
+      `LLM 补分降级（${quoteMeta.llm_scoring.reason || quoteMeta.llm_scoring.error || 'failed'}）`,
+    )
+  }
+  let nextAction = null
+  if (degradedReasons.length) {
+    const sid = (scriptObj && scriptObj.script_id) || (scriptArg && scriptArg.script_id) || 'motor-design'
+    nextAction = {
+      reason: degradedReasons.join('；') + '，结论由缺值兜底/降级产生，不得当作真实研判',
+      remedy: {
+        tool: 'yijing_factor_prompt',
+        args: { matter, script: sid },
+        then:
+          '把本工具返回的 prompt 交给当前对话大模型填 JSON → 将 {"宫code":分值} 扁平化为 inputs 回传 yijing_divine（本工具）。' +
+          '无需 API Key，费用计入当前对话会话。股票系剧本也可改传 symbols 触发自动行情替代手工打分。',
+      },
+    }
+  }
+
   if (args.detail) {
-    return { ...result, quote: quoteMeta, inputs_source: inputsSource, hex_encoding: hexEncoding }
+    const detailOut = { ...result, quote: quoteMeta, inputs_source: inputsSource, hex_encoding: hexEncoding }
+    if (nextAction) detailOut.next_action = nextAction
+    return detailOut
   }
   // 紧凑输出（对齐 l0 聚合工具思路：只回结论 + 计数，绕开 DSH 2000 行截断）
   const out = {
@@ -435,6 +482,7 @@ export async function runYijingDivine(args = {}, config = {}) {
   }
   if (quoteMeta) out.quote = quoteMeta
   if (notice) out.notice = notice
+  if (nextAction) out.next_action = nextAction
   return out
 }
 
@@ -443,10 +491,7 @@ export async function registerYijingDivine(ctx, config = {}) {
   ctx.tools.register(
     defineTool({
       name: 'yijing_divine',
-      description:
-        '易经推演-万事决 主入口：选剧本 → 分解决策事项为 384 关键因数 → 六层加权聚合 → 给出可定/否定结论' +
-        '（可行/有条件可行/不可行）。判定与聚合为确定性规则，云模型仅负责自然语言拆解与卦象文案翻译；' +
-        '可用 model 参数覆盖本次模型（厂商/自定义模型名/session）。',
+      description: TOOL_DESCRIPTION,
       parameters: TOOL_PARAMS,
       output: {
         schema: { type: 'string' },

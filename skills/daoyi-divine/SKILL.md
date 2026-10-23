@@ -3,7 +3,7 @@ name: daoyi-divine
 description: 道一-易经推演 决策辅助技能：把任意决策事项套入六层推演框架（384爻→64卦→8宫→四象→三才→两仪→太极），输出可定/否定结论与易经风格研判。当用户要求推演/测算/评估某事项成功率、吉凶、涨跌，或提及万事决/易经推演/道一时使用。Use when the user asks for structured decision review, divination-style evaluation, or mentions 万事决 / 道一.
 whenToUse: 用户提出决策研判需求（推演/测算/评估成功率/吉凶/涨跌/可行性）、提及「万事决」「易经推演」「道一」，或需要对电机电磁设计/股票趋势/商业成功率做结构化评审时加载。
 metadata:
-  version: 0.9.1
+  version: 0.9.2
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -105,6 +105,9 @@ L5/L6/L7 则是「分解粒度」：由 8 业务域拆到 64 子域再拆到 384
     直接比阈值会全阴）；检查点精确 id 优先，仍走工程量纲阈值。
   - **宫码因剧本而异**：motor-design 是 `EM/TH/ME/MT/EF/COST/MANU/RELIAB`，
     stock-trend 是 `JB/JS/ZJ/XX/HY/HG/GZ/FX`。传错码会被 `unmatched` 点名并 `degraded`。
+- **v0.9.2 反向委托显式化（让机制必被感知）**
+  - **① 工具描述第一行**：`yijing_divine` 的工具描述首句即写「可调 `yijing_factor_prompt` 取八宫打分 prompt → 对话大模型填分 → 以 inputs 回传本工具（无需 API Key、费用计入当前对话）」。工具 schema 是插件与对话模型唯一共享面，放第一句必被感知——模型在任何一次 divine 调用前都能看到这条 100% 可行的替代路径。
+  - **② 降级即给下一步**：任一降级返回（无输入 `source:'none'` / 覆盖率 `<50%` / `LLM 补分降级`）都带结构化 `next_action:{reason,remedy}`，`remedy.tool` 直指 `yijing_factor_prompt`、`remedy.args` 带本次 `matter` 与 `script`——模型见降级即知下一步调什么，把"无质量输入时的静默误报"转成"明确的下一步动作"。
 - **输入可观测性（v0.6.0）**：`inputs_coverage` 现含 `unmatched`（不匹配任何检查点/宫的键）与
   `granularity`；紧凑输出有 `degraded`（无有效输入或覆盖率 <50%）。**错宫码/缺输入不再静默出「100% 可行」**。
 - **卦象显式字段（v0.6.0）**：`evaluate()` 返回值新增 `hexagram`

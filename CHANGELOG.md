@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 0.9.2 (2026-10-23)
+### P0 反向委托显式化 + P1 降级结构化 next_action
+
+> 把 v0.6.0 已有的「yijing_factor_prompt → 对话填分 → inputs 回填」反向委托链路，**显式化**到工具
+> schema 第一句与降级返回——让对话模型在任何一次 divine 调用前都必然感知这条 100% 可行的替代路径。
+
+### 一、P0：工具描述首句即反向委托摘要
+- `tools/yijing/divine.mjs` 抽出 `TOOL_DESCRIPTION` 常量，首句写明「可调 `yijing_factor_prompt` 取八宫打分 prompt → 对话大模型填分 → 以 inputs 回传本工具（无需 API Key、费用计入当前对话）」。工具 schema 是插件与对话模型唯一共享面，放第一句必被感知。
+- `manifest.json` tools 清单补 `yijing_factor_prompt`（此前已注册却未声明，削弱机制可见性）。
+
+### 二、P1：降级返回带结构化 next_action
+- `runYijingDivine` 在任一降级（无输入 `source:'none'` / 覆盖率 `<50%` / `LLM 补分降级`）时产出 `next_action:{reason, remedy}`；`remedy` 含 `tool:'yijing_factor_prompt'`、`args:{matter,script}`、`then` 回填指引。detail 与紧凑两种返回均带。
+- 把"无质量输入时的静默误报"转成"明确的下一步动作"。
+
+### 三、待跟进（未在本版改，待授权）
+- 缺陷①：中性 `0.50` 被编码为阴（坤为地·不可行），与 `factor_prompt`「0.5 判阳边界」指引相反。
+- 缺陷②：不回填 → `verdict=可行/综合分1/全阳` 但 `coverage=0, degraded=true`，缺数据伪装成全阳。
+- 两处均涉及 verdict 语义与缺值默认值，属行为变更，需显式授权后再改。
+
+### 四、验证
+- `scripts/test_v092_features.mjs` 新增 11 用例（描述首句 + 三组降级/非降级 next_action）全绿；
+  v0.9.1 既有 81 用例 + `verify.mjs` 无回归。
+
 ## 0.9.1 (2026-10-23)
 ### P0 重启失败修复 + 分歧深度解读 + 三项遗留项收尾
 
