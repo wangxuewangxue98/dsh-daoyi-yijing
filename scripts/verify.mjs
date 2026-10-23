@@ -78,5 +78,33 @@ const rF = await evaluate('测试事项', 'motor-design', { inputs: { TH02C01: 1
 const th02 = (rF.subdomain_results['TH/冷却效率']) || null
 assert(th02 && th02.strong_veto === false, '场景F TH/冷却效率 无否决（boolean=1 判阳）')
 
+// ── 场景 G：golden replay 版本回归门（v0.9.4 P1-4）──
+// 54 只冻结信号重放与快照逐股比对；差异=核心评分链路被改动（应在 CHANGELOG 显式声明后 --update）
+{
+  try {
+    const { runReplayGolden } = await import('./replay_golden.mjs')
+    const { readFileSync } = await import('node:fs')
+    const { dirname, join } = await import('node:path')
+    const { fileURLToPath } = await import('node:url')
+    const here = dirname(fileURLToPath(import.meta.url))
+    const snap = JSON.parse(readFileSync(join(here, 'golden_snapshot.json'), 'utf8'))
+    const full = await runReplayGolden()
+    const { summary, results } = full
+    assert(
+      summary.n === snap.summary.n && JSON.stringify(summary.verdict_dist) === JSON.stringify(snap.summary.verdict_dist) && summary.veto_n === snap.summary.veto_n,
+      `场景G golden replay 摘要一致（n=${summary.n}，dist=${JSON.stringify(summary.verdict_dist)}，veto=${summary.veto_n}）`,
+    )
+    const snapByName = new Map(snap.results.map((x) => [x.name, x]))
+    let mismatch = 0
+    for (const r of results) {
+      const o = snapByName.get(r.name)
+      if (!o || JSON.stringify(r) !== JSON.stringify(o)) mismatch++
+    }
+    assert(mismatch === 0, `场景G golden replay 逐股一致（${results.length - mismatch}/${results.length}）`)
+  } catch (e) {
+    assert(false, `场景G golden replay 执行异常：${e && e.message}`)
+  }
+}
+
 console.log(failures === 0 ? '\nRESULT: PASS' : `\nRESULT: FAIL (${failures})`)
 process.exit(failures === 0 ? 0 : 1)

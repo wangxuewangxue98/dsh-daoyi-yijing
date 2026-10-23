@@ -126,4 +126,34 @@ export function daysToSnapshots(base, days, limit = 1) {
   return out
 }
 
-export default { buildKlineUrl, parseDailyKlines, fetchDailyKlines, fetchDailyKlinesBatch, daysToSnapshots }
+/**
+ * 日 K → 趋势体制统计（v0.9.4 P0-1 周趋势体制门的数据底座）。
+ *   ret   = 最近 retN 根累计涨跌%（(末根收盘 / retN 根前收盘 − 1)×100；需 n ≥ retN+1）
+ *   maDev = 末根收盘相对 maN 日均线的偏离%（需 n ≥ maN，不足则 null 不凑数）
+ * 诚实边界：历史不足 → ok=false / 对应字段 null，调用方回落单日口径（不虚构趋势）。
+ * @param {Array} days fetchDailyKlines 的 days
+ * @param {{retN?:number, maN?:number}} opts
+ * @returns {{ok:boolean, ret:number|null, maDev:number|null, n:number, retN:number, maN:number}}
+ */
+export function klineStatsOf(days, opts = {}) {
+  const retN = Math.max(1, Number(opts.retN) || 5)
+  const maN = Math.max(2, Number(opts.maN) || 20)
+  const out = { ok: false, ret: null, maDev: null, n: 0, retN, maN }
+  if (!Array.isArray(days)) return out
+  const usable = days.filter((d) => d && Number.isFinite(d.close) && d.close > 0)
+  out.n = usable.length
+  if (usable.length >= retN + 1) {
+    const last = usable[usable.length - 1].close
+    const base = usable[usable.length - 1 - retN].close
+    out.ret = Number((((last - base) / base) * 100).toFixed(3))
+    out.ok = true
+  }
+  if (usable.length >= maN) {
+    const slice = usable.slice(-maN)
+    const ma = slice.reduce((a, d) => a + d.close, 0) / slice.length
+    out.maDev = Number((((usable[usable.length - 1].close - ma) / ma) * 100).toFixed(3))
+  }
+  return out
+}
+
+export default { buildKlineUrl, parseDailyKlines, fetchDailyKlines, fetchDailyKlinesBatch, daysToSnapshots, klineStatsOf }

@@ -1,0 +1,7026 @@
+{
+  "_meta": {
+    "source": "v0.9.1 官方引擎轮B（子域级行情注入）实测注入信号，逐股原样冻结",
+    "source_report": "道一易经-55只本周内推演报告-v0.9.1（2026-10-22 收盘快照）",
+    "snapshot_date": "2026-10-22",
+    "script": "stock-trend-v2",
+    "note": "输入冻结于信号层：重放走 signalsToInputsV2 → evaluate → 批次分位数 → 卦象，保护核心评分链路；quoteToSignals 不参与（行情不可复现，信号已是最终形态）",
+    "generated_by": "replay 输入提取（一次性解析 v0.9.1 报告）"
+  },
+  "cases": [
+    {
+      "name": "工商银行",
+      "code": "601398",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.2235,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0.1532,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.166,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.2197,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.0967,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.25,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1884,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.063,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.1727,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.111,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.068,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": 0.0562,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.03,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0032,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.0681,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0056,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0071,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "建设银行",
+      "code": "601939",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.205,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0.1447,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.148,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.398,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.2017,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.0058,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.25,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1776,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1387,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0569,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.1075,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0722,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": 0.0483,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.06,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.0013,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0042,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0157,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "交通银行",
+      "code": "601328",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.2472,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0.0555,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.048,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0057,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.031,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1911,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.06,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1177,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0125,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.119,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.105,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0098,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.009,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.2275,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.0016,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.02,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0364,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "邮储银行",
+      "code": "601658",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.2469,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.0227,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.071,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.047,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0173,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0794,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1862,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0462,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2097,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.1455,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.118,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.1006,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0144,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.008,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.073,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.2148,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0169,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0107,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "招商银行",
+      "code": "600036",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.2642,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.0323,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.109,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.216,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0553,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1082,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.2136,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0234,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.0534,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0629,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.104,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0904,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0058,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.023,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.034,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.0209,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.0388,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0582,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "兴业银行",
+      "code": "601166",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.3372,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0.171,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.082,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1357,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.0494,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1541,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.138,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1024,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0325,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.1265,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0926,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": 0.0435,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.049,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.0731,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0113,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0196,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "平安银行",
+      "code": "000001",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.3441,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.125,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.096,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.3605,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0423,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0162,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1194,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0312,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.157,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0295,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.1265,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0934,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0142,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.009,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.2445,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0083,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "民生银行",
+      "code": "600016",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.3363,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.144,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.3637,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0903,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0896,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0965,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0024,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2182,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0325,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.137,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0832,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0234,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.009,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.03,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0601,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "光大银行",
+      "code": "601818",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.3273,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1667,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.131,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0773,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0966,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1068,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0102,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.224,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0511,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.1325,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0791,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0265,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.016,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0177,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.0429,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0422,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "瑞丰银行",
+      "code": "601528",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.3501,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.198,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.1443,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.25,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0675,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.03,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0156,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.126,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.068,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0481,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.003,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0979,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.1041,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0032,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0237,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "兰州银行",
+      "code": "001227",
+      "sector": "银行",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.2764,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1667,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.19,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0322,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.1363,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.25,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.056,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0252,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0665,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.131,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0664,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0385,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.008,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.0048,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.0847,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0511,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "洛阳钼业",
+      "code": "603993",
+      "sector": "有色",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.1575,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1025,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.212,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.2332,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1247,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.0142,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1374,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0384,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.099,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0182,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.019,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0604,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0517,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.004,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0331,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.2608,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0212,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "紫金矿业",
+      "code": "601899",
+      "sector": "有色",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.1508,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1366,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.357,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.333,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0203,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1299,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1924,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1254,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.0026,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0279,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.044,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0204,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0769,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.043,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0124,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.3056,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.027,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "江西铜业",
+      "code": "600362",
+      "sector": "有色",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.1531,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1815,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.42,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.2203,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.1033,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0719,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0859,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1752,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1708,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0624,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0785,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": -0.0047,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1109,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.025,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.0753,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.0383,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0395,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "西部矿业",
+      "code": "601168",
+      "sector": "有色",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.1781,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.2051,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.265,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.231,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0717,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0549,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0537,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0702,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1566,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0778,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0035,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0467,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1801,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.019,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.2384,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.053,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "盛屯矿业",
+      "code": "600711",
+      "sector": "有色",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.1686,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.314,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0227,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.2024,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0049,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0996,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0537,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.072,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0314,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1234,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.024,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.0637,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "赤峰黄金",
+      "code": "600988",
+      "sector": "有色",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.0346,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1268,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.42,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.2038,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0953,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0709,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0626,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1704,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1699,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0793,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.147,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": -0.0024,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0965,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.024,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0012,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.1489,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.1903,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0551,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "工业富联",
+      "code": "601138",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.0034,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1404,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.36,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.1633,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.1604,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1618,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.2074,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1272,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.0584,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0786,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.1205,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0191,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0482,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.006,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.2003,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0097,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "立讯精密",
+      "code": "002475",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.0056,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1279,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.202,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.1452,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0024,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1555,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1498,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0324,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.0637,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0182,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.0475,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0644,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0474,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.007,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0983,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.0662,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.1118,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0225,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "科大讯飞",
+      "code": "002230",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.3895,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.15,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.108,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.084,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0916,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0517,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0647,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.024,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2363,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0093,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.043,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0906,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0434,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0808,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0712,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0242,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "赛力斯",
+      "code": "601127",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.2522,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.2283,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.262,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.1487,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0624,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0083,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0519,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0684,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2002,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0504,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.055,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0474,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0659,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.025,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.072,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0784,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0714,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "三六零",
+      "code": "601360",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.3332,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.225,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.237,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.3608,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0374,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0641,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0392,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0534,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2467,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0125,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0465,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.053,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1148,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.012,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0873,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.1066,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "晶盛机电",
+      "code": "300316",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.3719,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.2442,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.197,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.3087,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0026,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1606,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0206,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0294,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0295,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.026,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0858,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.007,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0952,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0864,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0073,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "汇顶科技",
+      "code": "603160",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.2096,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.2112,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.297,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.0783,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0974,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1326,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0136,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0894,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0442,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0205,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0373,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0939,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.027,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0528,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0091,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "英杰电气",
+      "code": "300820",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.2589,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.42,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.1495,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1885,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0588,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.25,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.14,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.069,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.2105,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.013,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.1234,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.1603,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0267,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0156,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "西部超导",
+      "code": "688122",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.2604,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.0062,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.054,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.1975,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.2536,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0037,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0112,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1212,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1963,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.111,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.1005,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0286,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.053,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.2125,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0139,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0433,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "国光电气",
+      "code": "688776",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1987,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.317,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.168,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.1174,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.25,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.1142,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1014,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0563,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0165,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1373,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.033,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0704,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "长盛轴承",
+      "code": "300718",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.2594,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1741,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.061,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.0302,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.2606,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1087,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0441,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1254,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.1562,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.265,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1227,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.02,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.0455,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.0092,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.0565,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0025,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "华辰装备",
+      "code": "300809",
+      "sector": "AI算力",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.0433,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1801,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.037,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.1225,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1198,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.2366,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.25,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.1019,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.111,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.103,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.003,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1381,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.023,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.0781,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.0284,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0028,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "长江电力",
+      "code": "600900",
+      "sector": "电力新能源",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.0019,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0.125,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.085,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.3542,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1496,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1163,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.1915,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1398,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.0338,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0266,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.019,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0926,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": 0.0081,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.057,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.1733,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.0813,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "东方电气",
+      "code": "600875",
+      "sector": "电力新能源",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.0499,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1305,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.139,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.028,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1496,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1103,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1927,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0557,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0054,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0156,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0675,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0824,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0435,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.011,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": -0.0478,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.0009,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0054,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "金风科技",
+      "code": "002202",
+      "sector": "电力新能源",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.0025,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.322,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1496,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0727,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1109,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0437,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1044,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2232,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0517,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.071,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0298,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1178,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.012,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0233,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0242,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.004,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "隆基绿能",
+      "code": "601012",
+      "sector": "电力新能源",
+      "signals": [
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0.1554,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.155,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1496,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0445,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0622,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1818,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1679,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.055,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.062,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.07,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": 0.0216,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.05,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0218,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "大金重工",
+      "code": "002487",
+      "sector": "电力新能源",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.001,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.42,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.0428,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1496,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0203,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0153,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.25,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.1477,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.2177,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.069,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": -0.0873,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1939,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.011,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0512,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.106,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0232,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0745,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "永鼎股份",
+      "code": "600105",
+      "sector": "电力新能源",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.3957,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.42,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.2255,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1496,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.025,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0184,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.2484,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.11,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.1833,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.3,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": -0.0412,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1878,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.012,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.02,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.002,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "中国能建",
+      "code": "601868",
+      "sector": "基建装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.0099,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.15,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.128,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0423,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0576,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1454,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0735,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.012,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0295,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.107,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0797,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0345,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.004,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0203,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0663,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "中国核建",
+      "code": "601611",
+      "sector": "基建装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.0709,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.155,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0423,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0846,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0443,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0028,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0042,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0836,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0865,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0758,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0502,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.009,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.1867,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0626,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "中核科技",
+      "code": "000777",
+      "sector": "基建装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.1621,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.233,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0423,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.1626,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1509,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0971,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.051,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0156,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0325,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0561,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0969,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.011,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0463,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0113,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "中国一重",
+      "code": "601106",
+      "sector": "基建装备",
+      "signals": [
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.069,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.3037,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0423,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0014,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0484,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0249,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0474,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0492,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.0415,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.1003,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.055,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.024,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0206,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "铁建重工",
+      "code": "688425",
+      "sector": "基建装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.0395,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.05,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.05,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.089,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0423,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1204,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0881,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0203,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1188,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0889,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0925,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": 0,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.01,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0392,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0151,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "通裕重工",
+      "code": "300185",
+      "sector": "基建装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.037,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.1372,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0423,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0334,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0352,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0612,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0666,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0271,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0735,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": 0,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.015,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.1015,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.106,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0223,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "西藏天路",
+      "code": "600326",
+      "sector": "基建装备",
+      "signals": [
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.0962,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0.079,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.1253,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.0423,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1494,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.031,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0746,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.1362,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.047,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0375,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.094,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0749,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.1,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0286,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "西藏旅游",
+      "code": "600749",
+      "sector": "消费",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.2243,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.244,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.2137,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1568,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.146,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0576,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0524,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.026,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0528,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0751,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.001,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0928,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0253,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "贝因美",
+      "code": "002570",
+      "sector": "消费",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.0986,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.258,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1997,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1633,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.1139,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.066,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0069,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0155,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0508,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0762,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.015,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.0881,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0112,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "阳光乳业",
+      "code": "001318",
+      "sector": "消费",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.1486,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.42,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1214,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.1325,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.25,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0355,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": -0.18,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.3,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.02,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.1346,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0442,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.1018,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "金禾实业",
+      "code": "002597",
+      "sector": "消费",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.1999,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.327,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.1812,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1307,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0391,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0552,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1074,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0011,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.074,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0284,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1014,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.027,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.123,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.079,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0028,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "雪人股份",
+      "code": "002639",
+      "sector": "装备",
+      "signals": [
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1219,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.119,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.0907,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1509,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.1325,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1212,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0565,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0174,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.0961,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.25,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.078,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.088,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.228,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.032,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0484,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.1581,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "安泰科技",
+      "code": "000969",
+      "sector": "装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.1506,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.2206,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.214,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.3635,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1509,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.0375,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.1984,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.04,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.0396,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0304,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.018,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0616,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0864,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.006,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.1204,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0333,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.008,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "飞龙股份",
+      "code": "002536",
+      "sector": "装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1701,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.308,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.2113,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1509,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.0565,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.0036,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.0169,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.096,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2001,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.1576,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": -0.19,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.034,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.171,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.031,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0994,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0543,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0398,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "广发证券",
+      "code": "000776",
+      "sector": "非银",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.239,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.1525,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.07,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.0625,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.042,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": 0.0946,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0468,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.2077,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.0118,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0965,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.1014,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0471,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.011,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.0023,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": 0.047,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": 0.0128,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "弘讯科技",
+      "code": "603015",
+      "sector": "装备",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.365,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0.0865,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.1509,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.1135,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.25,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.1201,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.1302,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.0885,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.004,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0176,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.1489,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.022,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": 0.2042,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0855,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0692,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "ST股①(截图名ST化化)",
+      "code": "002109",
+      "sector": "ST",
+      "signals": [
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.146,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0.05,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.235,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": -0.25,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.1298,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0012,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": -0.1242,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.106,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": 0.0756,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.0588,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": -0.03,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0438,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "ST股②(截图名ST高新)",
+      "code": "000851",
+      "sector": "ST",
+      "signals": [
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": 0,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": 0,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": 0,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": 0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": 0,
+          "rule": "ZJ01-pct-proxy-fallback"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": 0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": 0.0888,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.0045,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.1136,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.25,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    },
+    {
+      "name": "ST股③(截图名ST联光)",
+      "code": "600363",
+      "sector": "ST",
+      "signals": [
+        {
+          "code": "GZ",
+          "subIdx": 0,
+          "delta": 0.1686,
+          "rule": "GZ01-PE-log"
+        },
+        {
+          "code": "JS",
+          "subIdx": 0,
+          "delta": -0.25,
+          "rule": "JS01-close-pos"
+        },
+        {
+          "code": "JS",
+          "subIdx": 1,
+          "delta": -0.42,
+          "rule": "JS02-pct"
+        },
+        {
+          "code": "JS",
+          "subIdx": 3,
+          "delta": -0.15,
+          "rule": "JS04-turnover-dir"
+        },
+        {
+          "code": "JS",
+          "subIdx": 7,
+          "delta": -0.1,
+          "rule": "JS08-amplitude"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 0,
+          "delta": -0.4,
+          "rule": "ZJ01-net-active-buy"
+        },
+        {
+          "code": "HY",
+          "subIdx": 0,
+          "delta": -0.2,
+          "rule": "HY01-sector-index"
+        },
+        {
+          "code": "HY",
+          "subIdx": 3,
+          "delta": -0.3,
+          "rule": "HY04-vs-sector-pct"
+        },
+        {
+          "code": "HY",
+          "subIdx": 7,
+          "delta": 0.1293,
+          "rule": "HY08-sector-capital-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 0,
+          "delta": -0.1223,
+          "rule": "HG01-totalcap-macro-sensitivity"
+        },
+        {
+          "code": "HG",
+          "subIdx": 2,
+          "delta": -0.25,
+          "rule": "HG03-vs-index-pct"
+        },
+        {
+          "code": "HG",
+          "subIdx": 6,
+          "delta": -0.25,
+          "rule": "HG07-market-liquidity-share"
+        },
+        {
+          "code": "HG",
+          "subIdx": 7,
+          "delta": 0.2461,
+          "rule": "HG08-relative-turnover-beta-proxy"
+        },
+        {
+          "code": "FX",
+          "subIdx": 1,
+          "delta": 0.1075,
+          "rule": "FX02-pb-goodwill-bubble"
+        },
+        {
+          "code": "FX",
+          "subIdx": 7,
+          "delta": -0.18,
+          "rule": "FX08-limit-distance"
+        },
+        {
+          "code": "JS",
+          "subIdx": 5,
+          "delta": -0.2242,
+          "rule": "JS06-avg-price-deviation"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 2,
+          "delta": 0.03,
+          "rule": "ZJ03-vol-ratio-margin-proxy"
+        },
+        {
+          "code": "ZJ",
+          "subIdx": 6,
+          "delta": 0.125,
+          "rule": "ZJ07-float-ratio-unlock-proxy"
+        },
+        {
+          "code": "GZ",
+          "subIdx": 3,
+          "delta": -0.25,
+          "rule": "GZ04-pe-static-vs-dynamic"
+        },
+        {
+          "code": "JB",
+          "subIdx": 0,
+          "delta": -0.0199,
+          "rule": "JB01-roe-proxy-pb-over-pe"
+        },
+        {
+          "code": "XX",
+          "subIdx": 7,
+          "delta": -0.0249,
+          "rule": "XX08-gap-open-event-proxy"
+        }
+      ]
+    }
+  ]
+}

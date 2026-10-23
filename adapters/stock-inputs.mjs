@@ -18,6 +18,7 @@ import {
   RULES_TEXT,
   DEFAULT_INDEX_SYMBOLS,
 } from './quote.mjs'
+import { fetchDailyKlinesBatch, klineStatsOf } from './quote-history.mjs'
 
 // 与 scripts/divine_batch_stocks.mjs 保持一致的侧面铺开系数（强度/持续性/确定性/边际变化/安全边际/催化）
 export const ASPECT_COEFS = [1.0, 0.5, 0.7, 0.8, 0.3, 0.0]
@@ -172,6 +173,30 @@ export async function buildStockInputs(codes, opts = {}) {
   // 板块口径：调用方可注入 sectorPctOf(code)（如校准/批处理有板块标签时）；
   // 无板块信息 → 回退大盘代理（HY01），并如实标注。
   const sectorProxy = !opts.sectorPctOf
+
+  // v0.9.4 P0-1：周趋势体制门（与 fetchSignalsForStocks 同口径；opts.trendGate === false 显式关闭）。
+  //   日 K 缺失/取数失败 → 该只回落 legacy 单日口径（不虚构历史）。
+  let klinesByCode = new Map()
+  const sectorTrend5 = {}
+  const trendGateMeta = { enabled: opts.trendGate !== false, fetched: 0, failed: 0, sector5_n: 0 }
+  if (trendGateMeta.enabled) {
+    const kres = await fetchDailyKlinesBatch(wanted, {
+      count: 25,
+      fetcher: opts.klineFetcher || opts.fetcher,
+      gapMs: opts.klineGapMs,
+    })
+    klinesByCode = kres.byCode
+    trendGateMeta.fetched = kres.fetched
+    trendGateMeta.failed = kres.failed
+    const acc = {}
+    for (const code of wanted) {
+      const st = klineStatsOf(klinesByCode.get(code), { retN: 5, maN: 20 })
+      if (st.ok) (acc[opts.sectorOf ? opts.sectorOf(code) : '_all'] ||= []).push(st.ret)
+    }
+    for (const [k, arr] of Object.entries(acc)) sectorTrend5[k] = arr.reduce((a, b) => a + b, 0) / arr.length
+    trendGateMeta.sector5_n = Object.keys(sectorTrend5).length
+  }
+
   const byCode = new Map()
   for (const [code, q] of quotes) {
     if (!q) continue
@@ -180,11 +205,15 @@ export async function buildStockInputs(codes, opts = {}) {
       : indexContext && Number.isFinite(indexContext.pct)
         ? indexContext.pct
         : undefined
+    const kst = klineStatsOf(klinesByCode.get(code), { retN: 5, maN: 20 })
+    const sectorKey = opts.sectorOf ? opts.sectorOf(code) : '_all'
     const signals = quoteToSignals(q, {
       sectorPct,
       // 无板块成交额均值 → 不给 sectorAmountWan（HY08 不出信号，避免与 HG07 同源）
       sectorAmountWan: undefined,
       indexCtx: indexContext,
+      trend: kst.ok ? { ret: kst.ret, maDev: kst.maDev } : null,
+      sectorTrend5d: Number.isFinite(sectorTrend5[sectorKey]) ? sectorTrend5[sectorKey] : null,
     })
     const buildInputs = opts.inputsBuilder || ((sig) => signalsToInputs(sig))
     byCode.set(code, {
@@ -207,6 +236,7 @@ export async function buildStockInputs(codes, opts = {}) {
       sector_proxy: sectorProxy
         ? '无板块标签：HY01 用大盘涨跌代理、HY08 不出信号（避免与 HG07 同源）'
         : null,
+      trendGate: trendGateMeta,
     },
   }
 }

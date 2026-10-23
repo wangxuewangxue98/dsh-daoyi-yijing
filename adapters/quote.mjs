@@ -5,6 +5,9 @@
 //   2) 任何取数失败/字段缺失 → 对应信号回退 NA（离线核心引擎不被污染）；
 //   3) 归一化规则全部透明（RULES_TEXT 导出，可审计、可引用、可测试）。
 //
+// v0.9.4 P0-1：周趋势体制门——本适配层新增 quote-history 接线（日 K → JS01/HY01 多日口径）。
+import { fetchDailyKlinesBatch, klineStatsOf } from './quote-history.mjs'
+//
 // 数据源：腾讯财经 qt.gtimg.cn（批量单请求、免费、无需鉴权）。
 // 响应为 GBK 编码的 v_ 行，字段以 ~ 分隔（旧式逗号分隔亦兼容）；数字字段为 ASCII，不影响解析。
 // 字段索引（腾讯标准，2026-10-21 实测对齐；个股与指数口径一致）：
@@ -37,7 +40,7 @@ export const DEFAULT_INDEX_SYMBOLS = ['sh000001'] // 上证指数
 /** 归一化规则文本（透明口径，供报告/日志/文档引用；与 quoteToSignals 逐一对应，改动请同步） */
 export const RULES_TEXT = [
   // ── 技术面 JS（初爻·起始/基础）──
-  'JS01 趋势方向 = (收盘−最低)/(最高−最低) 居中化 × 0.5（当日位置代理；单日快照，无历史趋势）',
+  'JS01 趋势方向 = 周趋势体制门（v0.9.4 P0-1）：有日 K 时 clamp(0.6×clamp(5日累计%×0.08) + 0.2×clamp(20日均线偏离%×0.08) + 0.2×日内收盘位置, ±0.42)，rule=JS01-trend-gate-5d；无日 K 回落单日口径 (收盘−最低)/(最高−最低) 居中化 × 0.5（rule=JS01-close-pos，诚实降级不虚构趋势）',
   'JS02 动量强度 = clamp(涨跌% × 0.10, ±0.42)（同基线口径）',
   'JS04 量能配合 = 换手率分档 × 当日方向：放量(≥3%)同向 +0.15 / 反向 −0.15；缩量(≤1%)同向 −0.05 / 反向 +0.05；其余 0（无历史均量对比，弱信号）',
   'JS06 均线系统 = clamp((均价偏离%) × 0.08, ±0.30)，均价偏离 = (现价−日内均价)/均价（站上均价=多头；proxy 日内均线）',
@@ -55,10 +58,13 @@ export const RULES_TEXT = [
   'HG07 流动性环境占比 = clamp(ln(个股成交额 / 指数成交额 × 100) × 0.10, ±0.25)：个股成交额占全市场成交额的比重（流动性关注度代理）',
   'HG08 风险偏好弹性(proxy) = clamp(ln(个股换手率 / 指数换手率) × 0.10, ±0.25)：高于市场平均换手＝高 beta/高风险偏好弹性',
   // ── 行业面 HY（五爻·主导/核心·君位）──
-  'HY01 行业景气 = clamp(板块景气% × 0.06, ±0.20)（优先用调用方给定的真实板块指数，否则取本批样本板块内实时均值，口径已标注）',
+  'HY01 行业景气 = 周趋势体制门（v0.9.4 P0-1）：有板块 5 日均值时 clamp(0.4×当日板块%×0.06 + 0.6×板块5日%×0.03, ±0.25/0.2)，rule=HY01-sector-index-5d；仅当日口径 clamp(板块% × 0.06, ±0.20)（rule=HY01-sector-index）；仅 5 日口径 ×0.03（rule=HY01-sector-index-5d-only）',
   'HY04 竞争格局(proxy) = clamp((个股涨跌% − 板块均值%) × 0.10, ±0.30)：跑赢同行＝行业内地位强',
   'HY08 产业链位置(proxy) = clamp(ln(个股成交额 / 板块均值成交额) × 0.12, ±0.25)：资金在板块内的聚焦位置',
   // ── 风险面 FX（上爻·终点/极端）──
+  'XX01 公司公告(名称风控) = 名称含「退」→ −0.35（退市整理期）；含「ST」→ −0.25（风险警示）；其余 NA（v0.9.4 P1-3：名称风控此前只在批处理手工 flag 列，在线单只/校准路径缺失——v2 评价 P0-2 退市整理期误判的机制根因）',
+  'FX01 系统性风险(名称风控激活) = 0.55：随名称风控信号一并激活，表示无系统性冲击（仅作 FX 域激活载体）',
+  'FX02 个股黑天鹅(名称风控) = 名称含「退」→ −0.35；含「ST」→ −0.30；与 PB 口径同子域冲突时取更负值（风险厌恶，不互相覆盖）',
   'FX02 个股黑天鹅（估值泡沫/商誉） = clamp((3 − PB) × 0.05, ±0.30)：PB 越高，泡沫与商誉减值风险越大 → 阴',
   'FX08 止损边界 = clamp((距涨跌停较近一侧的距离% − 6%) × 3.0, ±0.25)：距停板越远＝离极端越远＝安全边界越大（limit：距离含板块涨跌幅限制差异，ST/创业板口径不同，已如实标注）',
   // ── 基本面 JB / 消息面 XX（人宫：不占爻位，用于判决语义与覆盖率）──
@@ -68,6 +74,23 @@ export const RULES_TEXT = [
 ]
 
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x))
+
+/**
+ * 名称风控标记识别（v0.9.4 P1-3）。
+ *   - 'DELISTING'：名称含「退」（退市整理期，如「退市西水」「XX退」）——比 ST 更重的风险暴露
+ *   - 'ST'：名称含「ST」（含 *ST 风险警示）
+ *   - null：无标记
+ * 优先级：退市整理期 > ST（「*ST 退」类个股按退市口径处置）。
+ * 由来：v2 汇总评价 P0-2——退市整理期个股被当作普通股推演、跨版本未修；
+ *   此前名称风控只存在于批处理脚本的手工 flag 列（且 flag 词表没有退市态）。
+ */
+export function detectNameFlag(name) {
+  const s = String(name || '')
+  if (!s) return null
+  if (s.includes('退')) return 'DELISTING'
+  if (s.includes('ST')) return 'ST'
+  return null
+}
 
 /**
  * 腾讯响应为 GBK 字节流；此前用 res.text()/stdout 字符串拼接按 UTF-8 解码，
@@ -333,11 +356,21 @@ export async function fetchQuotes(codes, opts = {}) {
  *   - sectorPct      板块景气%（优先用真实板块指数，否则取本批样本板块内实时均值）
  *   - sectorAmountWan 板块成交额均值（万元）
  *   - indexCtx       { pct, amountWan, turnover } 指数基准（默认上证）
+ *   - trend          v0.9.4 P0-1：{ ret:5日累计%, maDev:20日均线偏离% }（klineStatsOf 产物；null/缺省 → JS01 回落单日口径）
+ *   - sectorTrend5d  v0.9.4 P0-1：板块 5 日累计均值%（null/缺省 → HY01 回落当日口径）
  */
 export function quoteToSignals(quote, extra = {}) {
   if (!quote || typeof quote !== 'object') return []
   const signals = []
   const add = (code, subIdx, delta, rule) => signals.push({ code, subIdx, delta: Number(delta.toFixed(4)), rule, source: 'tencent' })
+
+  // ── 名称风控信号（v0.9.4 P1-3）──
+  //   与批处理离线 flag 规则同 delta（mergeSignals 同键覆盖，不产生漂移）；退市整理期比 ST 更重。
+  const nameFlag = detectNameFlag(quote.name)
+  if (nameFlag) {
+    add('XX', 0, nameFlag === 'DELISTING' ? -0.35 : -0.25, `XX01-name-${nameFlag === 'DELISTING' ? 'delisting' : 'st'}`)
+    add('FX', 0, 0.05, 'FX01-name-flag-activation')
+  }
 
   // GZ01 绝对估值：PE 对数连续锚定（便宜→阳，贵→阴）；PE≤0（亏损）→ NA
   //   用对数尺度而非分段：PE 分布长尾，分段会把多只压成同一值（削弱该爻分化能力）
@@ -347,8 +380,16 @@ export function quoteToSignals(quote, extra = {}) {
     add('GZ', 0, d, 'GZ01-PE-log')
   }
 
-  // JS01 趋势方向：收盘位置居中化
-  if (quote.closePosition != null) {
+  // JS01 趋势方向：v0.9.4 P0-1 周趋势体制门——有日 K 历史时升级为「5 日累计(0.6) + 20 日均线(0.2) + 日内位置(0.2)」合成；
+  //   无历史（取数失败/显式关闭 trendGate）回落旧口径单日收盘位置，rule 名保持 JS01-close-pos 便于 A/B 审计。
+  //   动机（v2 评价 P0-3/P1-5）：单日快照对周度方向结构性无信息——熊偏 vintage 撞反弹日 → 全票看跌反指。
+  const trend = extra && extra.trend
+  if (trend && Number.isFinite(trend.ret)) {
+    const retPart = clamp(trend.ret * 0.08, -0.3, 0.3) // 5 日累计收益：±3.75% 内线性到 ±0.3
+    const maPart = Number.isFinite(trend.maDev) ? clamp(trend.maDev * 0.08, -0.3, 0.3) : 0
+    const posPart = quote.closePosition != null ? (quote.closePosition - 0.5) * 0.5 : 0
+    add('JS', 0, clamp(retPart * 0.6 + maPart * 0.2 + posPart * 0.2, -0.42, 0.42), 'JS01-trend-gate-5d')
+  } else if (quote.closePosition != null) {
     add('JS', 0, (quote.closePosition - 0.5) * 0.5, 'JS01-close-pos')
   }
 
@@ -385,8 +426,15 @@ export function quoteToSignals(quote, extra = {}) {
   // 关键：这三个量必须逐股分化。HY01 是板块共享量（同板块同值），故必须再补两个"个股相对板块"的量，
   //       否则该域取值数≈板块数（十几档），中位数切不开 → 该爻阳占比严重偏斜（此前实测 89.3%）。
   const sectorPct = extra && Number(extra.sectorPct)
-  if (Number.isFinite(sectorPct)) {
+  const sectorTrend5d = extra && Number(extra.sectorTrend5d)
+  // HY01 行业景气：v0.9.4 P0-1——有板块 5 日均值时与当日口径合成（5 日 0.6 / 当日 0.4）；
+  //   「周五 -3.14% 把全周翻负」这类结构只有多日口径看得到（v2 评价银行盲区的直接对冲）。
+  if (Number.isFinite(sectorPct) && Number.isFinite(sectorTrend5d)) {
+    add('HY', 0, clamp(sectorPct * 0.06 * 0.4 + sectorTrend5d * 0.03 * 0.6, -0.25, 0.2), 'HY01-sector-index-5d')
+  } else if (Number.isFinite(sectorPct)) {
     add('HY', 0, clamp(sectorPct * 0.06, -0.2, 0.2), 'HY01-sector-index')
+  } else if (Number.isFinite(sectorTrend5d)) {
+    add('HY', 0, clamp(sectorTrend5d * 0.03, -0.25, 0.2), 'HY01-sector-index-5d-only')
   }
   // HY04 竞争格局代理：跑赢同行＝行业内地位更强
   if (Number.isFinite(sectorPct) && quote.pct != null) {
@@ -423,9 +471,26 @@ export function quoteToSignals(quote, extra = {}) {
   // ——— 风险面 FX（上爻·终点/极端）：m=2~3 ———
   // FX02 个股黑天鹅（商誉/估值泡沫）：高 PB → 商誉减值与泡沫回撤风险大
   //   同源规避：驱动量为 PB（资产口径），与 GZ01 的 PE（盈利口径）、HG01 的总市值均不同源。
+  //   v0.9.4 P1-3：与名称风控同子域冲突时取更负值（风险厌恶，不互相覆盖）；
+  //   无名称风控时行为与旧版逐位一致（仅 PB 口径）。
   const pb = quote.pb
-  if (pb != null && pb > 0) {
-    add('FX', 1, clamp((3 - pb) * 0.05, -0.3, 0.3), 'FX02-pb-goodwill-bubble')
+  const pbDelta = pb != null && pb > 0 ? clamp((3 - pb) * 0.05, -0.3, 0.3) : null
+  const nameFx02 = nameFlag === 'DELISTING' ? -0.35 : nameFlag === 'ST' ? -0.3 : null
+  const fx02 =
+    nameFx02 != null && pbDelta != null
+      ? Math.min(pbDelta, nameFx02)
+      : nameFx02 != null
+        ? nameFx02
+        : pbDelta
+  if (fx02 != null) {
+    add(
+      'FX',
+      1,
+      fx02,
+      nameFx02 != null && (pbDelta == null || nameFx02 <= pbDelta)
+        ? `FX02-name-${nameFlag === 'DELISTING' ? 'delisting' : 'st'}`
+        : 'FX02-pb-goodwill-bubble',
+    )
   }
   // FX08 止损边界：距涨跌停较近一侧的剩余空间（离极端越远＝安全边界越大）
   if (quote.limitDist != null) {
@@ -585,21 +650,50 @@ export async function fetchSignalsForStocks(stocks, opts = {}) {
   }
 
   const sectorStats = buildSectorStats(stocks, quotes, opts.sectorIndexMap)
+
+  // v0.9.4 P0-1：周趋势体制门——默认开启（opts.trendGate === false 显式回落单日口径，A/B 审计）。
+  //   逐股取 25 根日 K → klineStatsOf(ret5/ma20)；板块 5 日均值 = 批次内同板块成员 ret5 均值。
+  //   个股日 K 缺失/取数失败 → 该只自动回落 legacy 口径（不虚构历史）；板块 5 日缺失 → HY01 回落当日口径。
+  let klinesByCode = new Map()
+  const sectorTrend5 = {}
+  const trendGateMeta = { enabled: opts.trendGate !== false, fetched: 0, failed: 0, sector5_n: 0 }
+  if (trendGateMeta.enabled) {
+    const kres = await fetchDailyKlinesBatch(codes, {
+      count: 25,
+      fetcher: opts.klineFetcher || opts.fetcher,
+      gapMs: opts.klineGapMs,
+    })
+    klinesByCode = kres.byCode
+    trendGateMeta.fetched = kres.fetched
+    trendGateMeta.failed = kres.failed
+    const acc = {}
+    for (const s of stocks) {
+      const c = String(codeOf(s)).replace(/\D/g, '')
+      const st = klineStatsOf(klinesByCode.get(c), { retN: 5, maN: 20 })
+      if (st.ok) (acc[sectorOf(s)] ||= []).push(st.ret)
+    }
+    for (const [k, arr] of Object.entries(acc)) sectorTrend5[k] = arr.reduce((a, b) => a + b, 0) / arr.length
+    trendGateMeta.sector5_n = Object.keys(sectorTrend5).length
+  }
+
   const signalsByCode = new Map()
   for (const s of stocks) {
     const q = quotes.get(String(codeOf(s)).replace(/\D/g, ''))
     if (!q) continue
     const st = sectorStats[sectorOf(s)] || {}
+    const kst = klineStatsOf(klinesByCode.get(q.code), { retN: 5, maN: 20 })
     signalsByCode.set(
       q.code,
       quoteToSignals(q, {
         sectorPct: st.pct,
         sectorAmountWan: st.amountWan,
         indexCtx: indexContext,
+        trend: kst.ok ? { ret: kst.ret, maDev: kst.maDev } : null,
+        sectorTrend5d: Number.isFinite(sectorTrend5[sectorOf(s)]) ? sectorTrend5[sectorOf(s)] : null,
       }),
     )
   }
-  return { signalsByCode, quotes, fetched, error, indexContext, indexError, sectorStats }
+  return { signalsByCode, quotes, fetched, error, indexContext, indexError, sectorStats, klinesByCode, trendGate: trendGateMeta }
 }
 
 export default {

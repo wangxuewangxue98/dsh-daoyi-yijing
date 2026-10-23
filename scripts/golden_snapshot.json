@@ -1,0 +1,987 @@
+{
+  "_meta": {
+    "note": "golden replay 快照：更新必须同步 CHANGELOG「核心评分是否变化」声明"
+  },
+  "summary": {
+    "n": 54,
+    "verdict_dist": {
+      "有条件可行": 43,
+      "不可行": 11
+    },
+    "veto_n": 6
+  },
+  "results": [
+    {
+      "name": "工商银行",
+      "code": "601398",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.7065,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.75,
+        "JS": 0.7667,
+        "ZJ": 0.7222,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "建设银行",
+      "code": "601939",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6731,
+      "has_veto": false,
+      "hexagram": "天泽履",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.8333,
+        "JS": 0.7333,
+        "ZJ": 0.6389,
+        "XX": 0.5,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "交通银行",
+      "code": "601328",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.638,
+      "has_veto": false,
+      "hexagram": "天泽履",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.7222,
+        "JS": 0.6333,
+        "ZJ": 0.6389,
+        "XX": 0.5,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "邮储银行",
+      "code": "601658",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6333,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5556,
+        "JS": 0.6333,
+        "ZJ": 0.6111,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "招商银行",
+      "code": "600036",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6694,
+      "has_veto": false,
+      "hexagram": "天泽履",
+      "domain_scores": {
+        "JB": 0.6667,
+        "HY": 0.6667,
+        "JS": 0.6,
+        "ZJ": 0.75,
+        "XX": 0.5,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "兴业银行",
+      "code": "601166",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.7056,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6944,
+        "JS": 0.7333,
+        "ZJ": 0.8056,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "平安银行",
+      "code": "000001",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.637,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5833,
+        "JS": 0.6,
+        "ZJ": 0.6389,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "民生银行",
+      "code": "600016",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.6111,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5833,
+        "JS": 0.5,
+        "ZJ": 0.5833,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "光大银行",
+      "code": "601818",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.6074,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5833,
+        "JS": 0.5333,
+        "ZJ": 0.5278,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "瑞丰银行",
+      "code": "601528",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5639,
+      "has_veto": false,
+      "hexagram": "泽天夬",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.3889,
+        "JS": 0.4667,
+        "ZJ": 0.5278,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "兰州银行",
+      "code": "001227",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.563,
+      "has_veto": false,
+      "hexagram": "泽山咸",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4444,
+        "JS": 0.4333,
+        "ZJ": 0.5,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "洛阳钼业",
+      "code": "603993",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6759,
+      "has_veto": false,
+      "hexagram": "风天小畜",
+      "domain_scores": {
+        "JB": 1,
+        "HY": 0.6111,
+        "JS": 0.5,
+        "ZJ": 0.6111,
+        "XX": 0.6667,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "紫金矿业",
+      "code": "601899",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6454,
+      "has_veto": false,
+      "hexagram": "巽为风",
+      "domain_scores": {
+        "JB": 1,
+        "HY": 0.5833,
+        "JS": 0.4,
+        "ZJ": 0.6389,
+        "XX": 0.6667,
+        "FX": 0.5833
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "江西铜业",
+      "code": "600362",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.5537,
+      "has_veto": true,
+      "hexagram": "坎为水",
+      "domain_scores": {
+        "JB": 0.6667,
+        "HY": 0.5,
+        "JS": 0.4333,
+        "ZJ": 0.5556,
+        "XX": 0.5,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "西部矿业",
+      "code": "601168",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6806,
+      "has_veto": false,
+      "hexagram": "巽为风",
+      "domain_scores": {
+        "JB": 1,
+        "HY": 0.6111,
+        "JS": 0.3333,
+        "ZJ": 0.6389,
+        "XX": 0.8333,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "盛屯矿业",
+      "code": "600711",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6269,
+      "has_veto": false,
+      "hexagram": "泽风大过",
+      "domain_scores": {
+        "JB": 0.8333,
+        "HY": 0.4722,
+        "JS": 0.4,
+        "ZJ": 0.6389,
+        "XX": 0.6667,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "赤峰黄金",
+      "code": "600988",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.5398,
+      "has_veto": true,
+      "hexagram": "水地比",
+      "domain_scores": {
+        "JB": 1,
+        "HY": 0.5,
+        "JS": 0.4333,
+        "ZJ": 0.4722,
+        "XX": 0.5,
+        "FX": 0.3333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "工业富联",
+      "code": "601138",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.6009,
+      "has_veto": false,
+      "hexagram": "风泽中孚",
+      "domain_scores": {
+        "JB": 1,
+        "HY": 0.5556,
+        "JS": 0.4667,
+        "ZJ": 0.5833,
+        "XX": 0.5,
+        "FX": 0.5
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "立讯精密",
+      "code": "002475",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.6148,
+      "has_veto": false,
+      "hexagram": "风泽中孚",
+      "domain_scores": {
+        "JB": 0.8333,
+        "HY": 0.6111,
+        "JS": 0.4667,
+        "ZJ": 0.6111,
+        "XX": 0.5,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "科大讯飞",
+      "code": "002230",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5435,
+      "has_veto": false,
+      "hexagram": "风雷益",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6111,
+        "JS": 0.5667,
+        "ZJ": 0.4167,
+        "XX": 0.5,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "赛力斯",
+      "code": "601127",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5444,
+      "has_veto": false,
+      "hexagram": "天地否",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5833,
+        "JS": 0.4333,
+        "ZJ": 0.5,
+        "XX": 0.5,
+        "FX": 0.75
+      },
+      "coverage": 0.0926
+    },
+    {
+      "name": "三六零",
+      "code": "601360",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5806,
+      "has_veto": false,
+      "hexagram": "泽山咸",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5278,
+        "JS": 0.4,
+        "ZJ": 0.4722,
+        "XX": 0.8333,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "晶盛机电",
+      "code": "300316",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5685,
+      "has_veto": false,
+      "hexagram": "泽火革",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4722,
+        "JS": 0.4667,
+        "ZJ": 0.4722,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "汇顶科技",
+      "code": "603160",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5259,
+      "has_veto": false,
+      "hexagram": "水山蹇",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4722,
+        "JS": 0.4333,
+        "ZJ": 0.4167,
+        "XX": 0.6667,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "英杰电气",
+      "code": "300820",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4602,
+      "has_veto": false,
+      "hexagram": "泽山咸",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.3611,
+        "JS": 0.2333,
+        "ZJ": 0.25,
+        "XX": 0.6667,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "西部超导",
+      "code": "688122",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5954,
+      "has_veto": false,
+      "hexagram": "天泽履",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6944,
+        "JS": 0.6,
+        "ZJ": 0.5278,
+        "XX": 0.5,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "国光电气",
+      "code": "688776",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5245,
+      "has_veto": false,
+      "hexagram": "泽山咸",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4444,
+        "JS": 0.3333,
+        "ZJ": 0.4167,
+        "XX": 0.8333,
+        "FX": 0.8333
+      },
+      "coverage": 0.0833
+    },
+    {
+      "name": "长盛轴承",
+      "code": "300718",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6269,
+      "has_veto": false,
+      "hexagram": "风火家人",
+      "domain_scores": {
+        "JB": 0.8333,
+        "HY": 0.6667,
+        "JS": 0.5667,
+        "ZJ": 0.4444,
+        "XX": 0.6667,
+        "FX": 0.5833
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "华辰装备",
+      "code": "300809",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5917,
+      "has_veto": false,
+      "hexagram": "天雷无妄",
+      "domain_scores": {
+        "JB": 0.6667,
+        "HY": 0.6111,
+        "JS": 0.4667,
+        "ZJ": 0.4722,
+        "XX": 0.5,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "长江电力",
+      "code": "600900",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.7046,
+      "has_veto": false,
+      "hexagram": "风天小畜",
+      "domain_scores": {
+        "JB": 0.8333,
+        "HY": 0.7222,
+        "JS": 0.7,
+        "ZJ": 0.6389,
+        "XX": 0.6667,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "东方电气",
+      "code": "600875",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6296,
+      "has_veto": false,
+      "hexagram": "泽天夬",
+      "domain_scores": {
+        "JB": 0.6667,
+        "HY": 0.5278,
+        "JS": 0.5,
+        "ZJ": 0.5833,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "金风科技",
+      "code": "002202",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5343,
+      "has_veto": false,
+      "hexagram": "泽水困",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5278,
+        "JS": 0.4,
+        "ZJ": 0.5278,
+        "XX": 0.5,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "隆基绿能",
+      "code": "601012",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6717,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.7222,
+        "JS": 0.7333,
+        "ZJ": 0.7083,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0833
+    },
+    {
+      "name": "大金重工",
+      "code": "002487",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4787,
+      "has_veto": true,
+      "hexagram": "坎为水",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4167,
+        "JS": 0.2333,
+        "ZJ": 0.5556,
+        "XX": 0.5,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "永鼎股份",
+      "code": "600105",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4556,
+      "has_veto": true,
+      "hexagram": "坎为水",
+      "domain_scores": {
+        "JB": 0.6667,
+        "HY": 0.4722,
+        "JS": 0.2333,
+        "ZJ": 0.5278,
+        "XX": 0.5,
+        "FX": 0.3333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "中国能建",
+      "code": "601868",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5926,
+      "has_veto": false,
+      "hexagram": "天火同人",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6389,
+        "JS": 0.5,
+        "ZJ": 0.4167,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "中国核建",
+      "code": "601611",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5648,
+      "has_veto": false,
+      "hexagram": "泽火革",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5,
+        "JS": 0.5,
+        "ZJ": 0.3889,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "中核科技",
+      "code": "000777",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5176,
+      "has_veto": false,
+      "hexagram": "泽火革",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.3889,
+        "JS": 0.4667,
+        "ZJ": 0.3333,
+        "XX": 0.6667,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "中国一重",
+      "code": "601106",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.496,
+      "has_veto": false,
+      "hexagram": "风雷益",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5556,
+        "JS": 0.5667,
+        "ZJ": 0.4167,
+        "XX": 0.5,
+        "FX": 0.6667
+      },
+      "coverage": 0.0833
+    },
+    {
+      "name": "铁建重工",
+      "code": "688425",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6528,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6111,
+        "JS": 0.6667,
+        "ZJ": 0.5556,
+        "XX": 0.6667,
+        "FX": 0.9167
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "通裕重工",
+      "code": "300185",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.6111,
+      "has_veto": false,
+      "hexagram": "天雷无妄",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6111,
+        "JS": 0.6667,
+        "ZJ": 0.4722,
+        "XX": 0.5,
+        "FX": 0.9167
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "西藏天路",
+      "code": "600326",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.6152,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6389,
+        "JS": 0.6333,
+        "ZJ": 0.6667,
+        "XX": 0.6667,
+        "FX": 0.75
+      },
+      "coverage": 0.0833
+    },
+    {
+      "name": "西藏旅游",
+      "code": "600749",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5259,
+      "has_veto": false,
+      "hexagram": "泽山咸",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4722,
+        "JS": 0.4333,
+        "ZJ": 0.3333,
+        "XX": 0.6667,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "贝因美",
+      "code": "002570",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.55,
+      "has_veto": false,
+      "hexagram": "泽火革",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4722,
+        "JS": 0.4667,
+        "ZJ": 0.4444,
+        "XX": 0.6667,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "阳光乳业",
+      "code": "001318",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4046,
+      "has_veto": true,
+      "hexagram": "水地比",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4444,
+        "JS": 0.2333,
+        "ZJ": 0.3333,
+        "XX": 0.5,
+        "FX": 0.4167
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "金禾实业",
+      "code": "002597",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5315,
+      "has_veto": false,
+      "hexagram": "泽雷随",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5,
+        "JS": 0.4667,
+        "ZJ": 0.4722,
+        "XX": 0.5,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "雪人股份",
+      "code": "002639",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4369,
+      "has_veto": false,
+      "hexagram": "风水涣",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.6667,
+        "JS": 0.3,
+        "ZJ": 0.5833,
+        "XX": 0.1667,
+        "FX": 0.6667
+      },
+      "coverage": 0.0833
+    },
+    {
+      "name": "安泰科技",
+      "code": "000969",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5444,
+      "has_veto": false,
+      "hexagram": "泽山咸",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4444,
+        "JS": 0.4333,
+        "ZJ": 0.4722,
+        "XX": 0.6667,
+        "FX": 0.75
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "飞龙股份",
+      "code": "002536",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4417,
+      "has_veto": false,
+      "hexagram": "水山蹇",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5,
+        "JS": 0.2333,
+        "ZJ": 0.3333,
+        "XX": 0.6667,
+        "FX": 0.4167
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "广发证券",
+      "code": "000776",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏强",
+      "overall_score": 0.6769,
+      "has_veto": false,
+      "hexagram": "乾为天",
+      "domain_scores": {
+        "JB": 0.6667,
+        "HY": 0.6389,
+        "JS": 0.5333,
+        "ZJ": 0.7222,
+        "XX": 0.6667,
+        "FX": 0.8333
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "弘讯科技",
+      "code": "603015",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5009,
+      "has_veto": false,
+      "hexagram": "坎为水",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.3889,
+        "JS": 0.3667,
+        "ZJ": 0.5833,
+        "XX": 0.5,
+        "FX": 0.6667
+      },
+      "coverage": 0.0972
+    },
+    {
+      "name": "ST股①(截图名ST化化)",
+      "code": "002109",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4879,
+      "has_veto": false,
+      "hexagram": "泽雷随",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4444,
+        "JS": 0.4667,
+        "ZJ": 0.4167,
+        "XX": 0.5,
+        "FX": 0.8333
+      },
+      "coverage": 0.0833
+    },
+    {
+      "name": "ST股②(截图名ST高新)",
+      "code": "000851",
+      "verdict": "有条件可行",
+      "verdict_grade": "有条件可行·偏弱",
+      "overall_score": 0.5194,
+      "has_veto": false,
+      "hexagram": "水泽节",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.5417,
+        "JS": 0.7083,
+        "ZJ": 0.75,
+        "XX": 0.1667,
+        "FX": 0.6667
+      },
+      "coverage": 0.0556
+    },
+    {
+      "name": "ST股③(截图名ST联光)",
+      "code": "600363",
+      "verdict": "不可行",
+      "verdict_grade": "不可行",
+      "overall_score": 0.4463,
+      "has_veto": true,
+      "hexagram": "水地比",
+      "domain_scores": {
+        "JB": 0.5,
+        "HY": 0.4444,
+        "JS": 0.2333,
+        "ZJ": 0.5,
+        "XX": 0.5,
+        "FX": 0.5
+      },
+      "coverage": 0.0972
+    }
+  ]
+}

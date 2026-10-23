@@ -23,6 +23,8 @@ import { parseCp, resolveQuadHexagram } from '../lib/yijing/quad-hexagram.mjs'
 import { familyOf, familyOfV2 } from '../lib/yijing/subfamily-map.mjs'
 import { FINE_MAP, assertFineMapConsistency } from '../lib/yijing/subdomain-fine-map.mjs'
 import { fetchQuotes, quoteToSignals, createCurlFetcher } from '../adapters/quote.mjs'
+// v0.9.5 P0-1：校准口径对齐生产趋势门（此前 JS01/HY01 在校准路径静默回落单日口径，基线与生产信号分布错位）
+import { fetchDailyKlines, klineStatsOf } from '../adapters/quote-history.mjs'
 import { fetchDailyKlinesBatch, daysToSnapshots } from '../adapters/quote-history.mjs'
 import { buildStockInputs, signalsToInputs, signalsToInputsV2 } from '../adapters/stock-inputs.mjs'
 import { capBand, pctBand, stratumOfQuote } from '../lib/yijing/baselines.mjs'
@@ -246,6 +248,27 @@ async function main() {
     console.log(`  指数基准：${indexContext.name}(${indexContext.symbol}) 涨跌 ${indexContext.pct}%`)
   }
 
+  // v0.9.5 P0-1：趋势门校准上下文——逐股 25 根日 K → klineStatsOf(ret5/ma20)；
+  //   板块 5 日代理 = 指数 5 日累计（校准池无板块标签，与单只对话路径的大盘代理口径一致，meta 中如实标注）。
+  //   缺历史 → 该样本回落单日口径（与生产回退一致，不虚构趋势）。
+  const klineFetcherOpts = CURL_PROXY ? { fetcher: createCurlFetcher({ proxy: CURL_PROXY, timeoutMs: 12000 }) } : {}
+  const trendCodes = [...new Set(samples.map((s) => s.code))]
+  const kres = await fetchDailyKlinesBatch(trendCodes, { count: 25, ...klineFetcherOpts })
+  const TREND_BY_CODE = new Map()
+  for (const c of trendCodes) {
+    const kst = klineStatsOf(kres.byCode.get(c), { retN: 5, maN: 20 })
+    if (kst && kst.ok) TREND_BY_CODE.set(c, { ret: kst.ret, maDev: kst.maDev })
+  }
+  let INDEX_RET5 = null
+  if (indexContext && indexContext.symbol) {
+    const ik = await fetchDailyKlines(indexContext.symbol, { count: 25, ...klineFetcherOpts })
+    const ikst = klineStatsOf(ik && ik.days, { retN: 5, maN: 20 })
+    if (ikst && ikst.ok) INDEX_RET5 = ikst.ret
+  }
+  console.log(
+    `  趋势门校准：日 K ${TREND_BY_CODE.size}/${trendCodes.length} 只；指数 5 日代理 ${INDEX_RET5 == null ? 'NA' : INDEX_RET5.toFixed(2) + '%'}（HY01 板块口径用大盘代理，校准池无板块标签）`,
+  )
+
   const script0 = IS_V2 ? buildStockTrendV2Script() : buildStockScript()
   // P2 自检：精映射与 MIGRATION_MAP 分域归属必须一致（不一致则基线无效）
   if (USE_FINE_MAP) {
@@ -258,11 +281,17 @@ async function main() {
   }
   const db = buildCheckpointDatabase(script0)
   const migrationMap = script0.migrated_from ? script0.migrated_from.mapping : {}
-  const buildInputsFor = (q) => {
+  const buildInputsFor = (q, sample = null) => {
+    // v0.9.5 P0-1：趋势门校准——仅实时快照（date==null）吃 trend/sectorTrend5d；
+    //   --days 滚动模式的历史日稀疏快照保持单日口径（当前日 K 对历史日期属未来数据，不得泄漏）。
+    const trend =
+      sample && sample.date == null ? TREND_BY_CODE.get(sample.code) || null : null
     const sigs = quoteToSignals(q, {
       sectorPct: indexContext && Number.isFinite(indexContext.pct) ? indexContext.pct : undefined,
       sectorAmountWan: undefined,
       indexCtx: indexContext,
+      trend,
+      sectorTrend5d: trend && INDEX_RET5 != null ? INDEX_RET5 : null,
     })
     // v2：384 形态信号经迁移映射填 36 分域（L2 粒度）；--fine-map 时精映射到分域×子域位（P2）。384：原子域口径
     return IS_V2
@@ -276,7 +305,7 @@ async function main() {
   const rows = []
   for (let i = 0; i < samples.length; i++) {
     const { code, quote: q, date } = samples[i]
-    const built = buildInputsFor(q)
+    const built = buildInputsFor(q, samples[i])
     const script = { ...script0, na: { domains: [], checkpoints: built.naIds } }
     // 确定性推演（不调 LLM：校准只求宫分分布，避免数百次撞免费 LLM 速率闸）；返回逐检查点阴阳用于分组基线
     const r = evaluateDeterministic(script, {
@@ -526,6 +555,13 @@ async function main() {
       rules_note:
         '宫分口径与 tools/yijing/divine.mjs 的行情自动路径完全一致（adapters/stock-inputs.mjs 共享）；' +
           '爻义=「相对参照系偏强/偏弱」而非绝对 0.5',
+      trend_gate: {
+        enabled: true,
+        n_trend: TREND_BY_CODE.size,
+        n_samples: samples.length,
+        index_ret5_proxy: INDEX_RET5,
+        note: 'v0.9.5 P0-1：实时快照样本 JS01=5日+均线+日内合成、HY01 含指数5日代理；--days 历史日稀疏样本保持单日口径（防未来数据泄漏）',
+      },
       inputs_granularity: IS_V2 ? (USE_FINE_MAP ? 'subdomain（P2 规则→子域名精映射）' : 'L2（分域粒度铺开）') : 'subdomain（384 原子域）',
       // F-6 / F-9（v0.9.0）：样本结构与分组口径显式化
       calibration: {

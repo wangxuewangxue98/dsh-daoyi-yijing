@@ -8,9 +8,11 @@
 //   JS 动量强度   = 0.5 + clamp(涨跌% × 0.10, -0.42, +0.42)
 //   ZJ 主力资金   = 0.5 + clamp(涨跌% × 0.10, -0.42, +0.42)  （当日涨跌作短线资金流代理——局限已声明）
 //   HY 行业景气   = 0.5 + clamp(板块日均涨跌% × 0.06, -0.20, +0.20)（板块按名称归类，均值来自截图当日数据）
-//   XX 公司公告   = ST → 0.25（风险警示=负面）；XD → 0.55（除息中性）；其余 NA（无公告数据不评分）
+//   XX 公司公告   = ST → 0.25（风险警示=负面）；退市整理期（名称含「退」自动识别）→ 0.15（更重）；XD → 0.55（除息中性）；其余 NA（无公告数据不评分）
 //   FX 系统性风险 = 0.55（仅当 FX 域存在其他信号时激活；指数微涨无系统性冲击）
-//   FX 个股黑天鹅 = ST → 0.20；否则 NA
+//   FX 个股黑天鹅 = ST → 0.20；退市整理期 → 0.15；否则 NA
+//   （v0.9.4 P1-3：名称风控自动识别 detectNameFlag——手工 flag 列缺省时从名称识别 ST/退，
+//     退市整理期优先于 ST；在线 quoteToSignals 同口径，修 v2 评价 P0-2 跨版本误判）
 //   FX 止损边界   = 涨跌% ≤ −4.5 → 0.40（深跌风险暴露）；≥ +4.5 → 0.70（强动量、无警示）；否则 NA
 //   JB 基本面 / GZ 估值面 / HG 宏观面：截图无任何数据 → 全域 NA（覆盖率如实暴露，不造假）
 // 推演区间：本周内（截图为周三收盘快照 → 剩余周四/周五共 2 个交易日）。
@@ -23,7 +25,7 @@ import { buildStockScript, buildCheckpointDatabase } from '../lib/yijing/checkpo
 import { buildStockTrendV2Script } from '../lib/yijing/scripts/stock-trend-v2.mjs'
 import { evaluate } from '../lib/yijing/reviewer.mjs'
 import { resolveHexagramForScript, quantileThresholds } from '../lib/yijing/hexagram.mjs'
-import { fetchSignalsForStocks, RULES_TEXT } from '../adapters/quote.mjs'
+import { fetchSignalsForStocks, RULES_TEXT, detectNameFlag } from '../adapters/quote.mjs'
 import { signalsToInputs, signalsToInputsV2 } from '../adapters/stock-inputs.mjs'
 import { FINE_MAP } from '../lib/yijing/subdomain-fine-map.mjs'
 import { loadBaselines, stratumMetaOf } from '../lib/yijing/baselines.mjs'
@@ -121,6 +123,23 @@ function sectorAvgOf(stocks) {
 }
 const sectorAvg = sectorAvgOf(STOCKS)
 
+// v0.9.4 P1-3：名称风控有效标记（退市整理期 > 手工 flag 列 > ST 自动识别）
+//   退市整理期个股名称必含「退」，历史上被手工标成 ST（flag 列没有退市态词表）——
+//   名称检测优先于 flag 列，确保按退市口径处置；手工 ST/XD 列在非退市个股上仍生效。
+//   在线路径（quoteToSignals）用同一 detectNameFlag 口径，两侧不漂移。
+export function effectiveFlag(stock) {
+  const nameFlag = detectNameFlag(stock && stock[0])
+  if (nameFlag === 'DELISTING') return 'DELISTING'
+  return (stock && stock[5]) || nameFlag || ''
+}
+
+/** 风控否决 / 风险暴露的文案标签（assess 与 veto_reason 共用，避免口径漂移） */
+export function flagRiskLabel(flag) {
+  if (flag === 'ST') return 'ST 风险警示'
+  if (flag === 'DELISTING') return '退市整理期'
+  return '当日深跌风险暴露'
+}
+
 // ===== 子域级信号 → 检查点输入 + NA 标记 =====
 const SUB_IDX = { JS趋势: 0, JS动量: 1, ZJ主力: 0, HY景气: 0, XX公告: 0, FX系统: 0, FX黑天鹅: 1, FX止损: 7 }
 
@@ -141,7 +160,9 @@ export function mergeSignals(baseline, adapter) {
 function buildInputs(stock, extraSignals = [], secAvg = sectorAvg, ctx = {}) {
   const scriptObj = ctx.script || script
   const dbObj = ctx.db || db
-  const [, , , pct, sector, flag] = stock
+  const [, , , pct, sector] = stock
+  // v0.9.4 P1-3：flag 列缺省时从名称自动识别 ST/退市整理期（与在线 detectNameFlag 同口径）
+  const effFlag = effectiveFlag(stock)
   const rel = pct - MARKET_PCT
   // 每个活跃子域：base = 0.5 + delta；6 侧面按系数铺开
   const base = []
@@ -150,11 +171,16 @@ function buildInputs(stock, extraSignals = [], secAvg = sectorAvg, ctx = {}) {
   add('JS', SUB_IDX.JS动量, clamp(pct * 0.1, -0.42, 0.42))
   add('ZJ', SUB_IDX.ZJ主力, clamp(pct * 0.1, -0.42, 0.42))
   add('HY', SUB_IDX.HY景气, clamp((secAvg[sector] ?? 0) * 0.06, -0.2, 0.2))
-  if (flag === 'ST') {
+  if (effFlag === 'ST') {
     add('XX', SUB_IDX.XX公告, -0.25)
     add('FX', SUB_IDX.FX系统, 0.05)
     add('FX', SUB_IDX.FX黑天鹅, -0.3)
-  } else if (flag === 'XD') {
+  } else if (effFlag === 'DELISTING') {
+    // 退市整理期：比 ST 更重的风险暴露（v0.9.4 P1-3，修 v2 评价 P0-2 跨版本误判）
+    add('XX', SUB_IDX.XX公告, -0.35)
+    add('FX', SUB_IDX.FX系统, 0.05)
+    add('FX', SUB_IDX.FX黑天鹅, -0.35)
+  } else if (effFlag === 'XD') {
     add('XX', SUB_IDX.XX公告, 0.05)
   }
   if (pct <= -4.5) {
@@ -196,8 +222,9 @@ function mapTrend(r) {
 }
 
 function assess(stock, r, activeDomains, coverage, ctx = {}) {
-  const [, , , , , flag] = stock
   const scriptObj = ctx.script || script
+  // v0.9.4 P1-3：使用名称风控有效标记（与 buildInputs / veto_reason 同口径）
+  const effFlag = effectiveFlag(stock)
   const allDomains = scriptObj.domains.map((d) => d.code)
   const totalDomains = allDomains.length
   const naDomains = allDomains.filter((c) => !activeDomains.includes(c))
@@ -211,11 +238,11 @@ function assess(stock, r, activeDomains, coverage, ctx = {}) {
         ? '中低（距档位边界较近）'
         : '中（距档位边界较远，档位相对稳定）'
   const notes = [
-    `输入完备度：${activeDomainCount}/${totalDomains} 个域有数据支撑的信号（JS/ZJ 来自当日行情，HY 为板块当日均值代理，XX/FX 仅 ST·XD·大涨大跌情形激活，GZ 仅在线模式激活）；` +
+    `输入完备度：${activeDomainCount}/${totalDomains} 个域有数据支撑的信号（JS/ZJ 来自当日行情，HY 为板块当日均值代理，XX/FX 仅 ST·退市整理期·XD·大涨大跌情形激活，GZ 仅在线模式激活）；` +
       `${naDomains.length ? `无数据域 ${naDomains.join('/')} → 全域 NA` : '全部域均有数据支撑'}（覆盖率 ${(coverage * 100).toFixed(1)}%），${checksLabel}框架下如实暴露信息缺口而非造假填充。`,
     `结论置信：${conf}` +
       (r.has_veto
-        ? `；触发 FX/XX 白名单否决（${flag === 'ST' ? 'ST 风险警示' : '当日深跌风险暴露'}），档位由风控规则主导，对输入鲁棒。`
+        ? `；触发 FX/XX 白名单否决（${flagRiskLabel(effFlag)}），档位由风控规则主导，对输入鲁棒。`
         : `；无否决，档位由 ${activeDomainCount} 个活跃域的通过率均值决定。`),
     `可复核性：全部输入由行情涨跌幅按公开规则线性映射（在线模式另含腾讯 PE/振幅/换手规则，见 RULES_TEXT），无隐藏参数；确定性引擎（零 LLM 消耗），同一输入必得同一结论，可用下周末行情回看校验。`,
   ]
@@ -340,6 +367,8 @@ export async function runBatch(opts = {}) {
   const results = []
   for (const p of pending) {
     const { stock, r, s, signals, scores8, activeDomains, name, code, price, pct, sector, flag, stratumMeta } = p
+    // v0.9.4 P1-3：否决文案用名称风控有效标记（手工列 + 名称自动识别同口径）
+    const effFlag = effectiveFlag(stock)
     const hx = resolveHexagramForScript(scores8, s, qt.thresholds)
     const a = assess(stock, r, activeDomains, r.coverage.coverage, ctx)
     results.push({
@@ -357,7 +386,7 @@ export async function runBatch(opts = {}) {
       // v0.9.1 N-3：贴线摇摆（跨种子易翻面）——与骑墙正交，只看分数距决定线的余量
       verdict_swing: r.verdict_swing || null,
       swing_borderline: Boolean(r.verdict_swing && r.verdict_swing.borderline),
-      veto_reason: r.has_veto ? (flag === 'ST' ? 'ST 风险警示 → FX/XX 白名单强关联失守' : '当日深跌风险暴露 → FX 白名单强关联失守') : null,
+      veto_reason: r.has_veto ? `${flagRiskLabel(effFlag)} → FX/XX 白名单强关联失守` : null,
       risk_level: r.risk_level,
       overall_score: r.overall_score,
       yang_ratio: r.yang_ratio,

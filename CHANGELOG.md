@@ -1,6 +1,52 @@
 # CHANGELOG
 
-## 0.9.4 (unreleased) — 商业化三档授权 Phase 1/2
+## 0.9.5 (2026-10-23 已发布) — v2 汇总评价驱动的四项引擎改进（P1-3 → P1-4 → P0-2 → P0-1）
+
+> 依据：v2 汇总评价（35 轮 × 53 核心集）六大结论 + 改进建议报告（output/道一易经-v2汇总评价改进建议-20261023.md）。核心评分口径变化已通过 golden replay 门显式声明（54 只快照已按新口径重制）。
+
+### P1-3 名称风控自动识别（修 v2 评价 P0-2 退市整理期跨版本误判）
+- `adapters/quote.mjs` 新增 `detectNameFlag(name)`：名称含「退」→ DELISTING（退市整理期）、「ST」→ ST；退市整理期优先于 ST。
+- **在线路径补齐名称风控**（此前只存在于批处理手工 flag 列）：`quoteToSignals` 对 DELISTING 出 XX01 −0.35 / FX01 +0.05 / FX02 −0.35，ST 出 −0.25/+0.05/−0.30；FX02 与 PB 口径同子域冲突时取更负（风险厌恶）。无名称风控的股票逐位不变。
+- `scripts/divine_batch_stocks.mjs` 新增 `effectiveFlag`（退市整理期 > 手工 flag 列 > 名称自动识别）与 DELISTING 分支（−0.35/+0.05/−0.35）；`flagRiskLabel` 统一否决文案（assess 与 veto_reason 共用）。
+- 专项：`scripts/test_v094_features.mjs` 29 用例（后扩至 53）全绿；既有 ST 行为零回归。
+
+### P1-4 golden replay 版本回归门（治「版本迭代虚化」）
+- `scripts/golden_cases.json`：54 只固定输入（v0.9.1 官方引擎轮B 实测注入信号，逐股原样冻结；55 只中 XD祖名无行情故 54）。
+- `scripts/replay_golden.mjs`：信号层重放（signalsToInputsV2 → evaluate → 批次分位数 → 卦象），`--update` 重制快照；纳入 `verify.mjs` 场景 G（摘要 + 54/54 逐股双断言）。
+- **核心评分变化声明**：本版 P0-2 使 7/54 综合分下移（中国一重、ST股① 跌破 0.5 线降为不可行——对照周实况 −2.7%/−1.5% 方向正确），快照已按 0.9.5 口径重制。
+
+### P0-2 剧本级 scoringPolicy 缺值口径（方案 C，兑现 mapping.mjs 历史 M1 TODO）
+- `scoringPolicy: { missingValue: 'thresholdMid'|'half'|'abstain', domainCoverageWeighting: bool }` 与 veto 同级声明；**不声明的剧本（motor-design 等）逐位零回归**。
+- `stock-trend-v2` 启用 `{ missingValue: 'half', domainCoverageWeighting: true }`：
+  - half：检查点级缺值按 0.5 中性贡献——不判阳、不计失败、不触发强关联否决（旧口径缺值经 thresholdMid 白送阳爻，是看涨执念的结构性假阳源）；
+  - abstain：缺值剔除出聚合分母（等同 NA）；
+  - domainCoverageWeighting：综合分 ×(0.5 + 0.5×在场域/总域)——稀疏域均分不再与齐备输入同权。
+- `aggregator.mjs`：passFactor/missing/abstain 语义 + `domain_coverage_factor` 审计字段；`reviewer.mjs` 两条评估链路（evaluate/evaluateDeterministic）贯通。
+- 专项：half/abstain/折扣/全量显式等价/opt-in 语义断言全绿。
+
+### P0-1 周趋势体制门（v2 评价最高优先项；信号口径升级）
+- `adapters/quote-history.mjs` 新增 `klineStatsOf(days)`：5 日累计收益 ret + 20 日均线偏离 maDev（历史不足 → ok=false，诚实降级不虚构趋势）。
+- `quote.mjs quoteToSignals`：**JS01 原地升级**为「5 日累计(0.6) + 20 日均线(0.2) + 日内位置(0.2)」合成（rule=JS01-trend-gate-5d；无日 K 回落 legacy 单日口径，rule 不变）；**HY01** 与板块 5 日均值合成（0.4×当日 + 0.6×5日；仅 5 日时 ×0.03）。不新增子域槽位——迁移映射/FINE_MAP/基线结构零改动。
+- `fetchSignalsForStocks` / `buildStockInputs` 接线：默认开启（`trendGate:false` 显式关闭供 A/B），逐股 25 根日 K（newfqkline），板块 5 日均值由批次成员 ret5 均值聚合；个股取数失败自动回落 legacy。
+- **在线实测**（54 只全量，10-23 收盘）：54/54 日 K 成功；工商银行当日 +1.66% 但 JS01=−0.019（旧口径 +0.155——单日动量幻觉被周趋势对冲）；银行板块 5 日 HY01=−0.079。
+- **反弹日重放验收**（54 只 × 周实况对照）：看跌呼叫命中率 9.5%（旧 vintage）→ **53.3%**，反指已除；仍低于周实况下跌基准 74.1%，且看涨呼叫 0——**基线分位数尚未按新口径重校准，效果终评需重跑基线后多周滚动回测**（后续步骤，见实施报告）。
+
+### 基线重校准（v0.9.5 同版完成，随包基线已按趋势门口径重制）
+- **修复校准路径静默回退缺陷**：`calibrate_stock_baselines.mjs` 此前直接调 `quoteToSignals` 未传 `trend`/`sectorTrend5d`，两份基线在校准路径回落单日口径、与生产趋势门信号分布错位。已修复：校准路径逐股 25 根日 K → `klineStatsOf`（ret5/ma20），板块 5 日用指数代理（校准池无板块标签，与单只对话路径同口径，meta 如实标注）；`--days` 滚动模式的历史日稀疏样本保持单日口径（防未来数据泄漏）。
+- 重校准（n=400，seed=20261022，398/400 有日 K，指数 5 日 −2.61%）：v1 `baselines-stock.json` JS p50 0.80→0.70 / HY 0.75→0.58（卦象空间 50/64）；v2 `baselines-stock-v2.json` JS 0.80→0.70 / HY 0.67→0.60（56/64）。`meta.trend_gate` 写入基线文件供审计。
+- 修复后全量回归 8 套件全绿。
+
+### 趋势门多周滚动回测终评（54 只 × 10 周 × A/B 双臂，n=540）
+- ON（趋势门）vs OFF（单日口径）双臂对照，评分口径冻结旧缺值口径以隔离单一变量；真值=T+5 累计涨跌。
+- **看跌呼叫 64.8% vs 全看跌基准 57.4%（z=2.07，p≈0.019）——ON 臂唯一统计显著跑赢基准的口径**（OFF z=1.89 边缘）；看涨呼叫不显著（43.3%，z=0.72），不得对外承诺看涨能力。
+- 体制感知价值：大反弹周（08-20，39涨/13跌）看涨精度 ON 90% vs OFF 80% 且呼叫更克制（10 vs 15）；弱反弹周池化看涨精度 50.0% 仍低于全看涨基准 64.7%——板块趋势强度门控列为 P1。
+- 数据交叉验证：10-16 周 19涨/35跌 与 v2 汇总全周口径一致。明细：`趋势门滚动回测明细-20261023.json`（随仓库外交付）。
+
+### 测试与回归
+- `test_v094_features.mjs` 53 用例全绿；verify（含场景 G golden replay）、stock_inputs 80、v090 79、v091 81、v092 11、v093 24、quad、session_activation 55 全绿。
+- 前版待办闭环：① 基线重校准已完成（本版）；② 多周滚动回测终评已完成（本版）；③ ST 分布微移已随重校准消化。
+
+## 0.9.4 (2026-10-23 已发布) — 商业化三档授权 Phase 1/2
 ### 新增：两轴授权地基 + 推演日限 + 维度门控（单版本插件内嵌功能分级）
 
 > 设计见 docs/商业化三档授权与管理端方案-暂定.md；本版仅落地**授权地基与门控**，后端发放/管理端/交易闭环见后续版本。

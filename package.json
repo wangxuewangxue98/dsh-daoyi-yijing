@@ -1,6 +1,6 @@
 {
   "name": "dsh-daoyi-yijing",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "type": "module",
   "main": "./index.mjs",
   "exports": {
