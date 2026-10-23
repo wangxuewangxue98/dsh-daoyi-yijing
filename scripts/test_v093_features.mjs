@@ -1,4 +1,5 @@
 // test_v093_features.mjs — v0.9.3 两个高危边界缺陷修复专项测试
+process.env.DAOYI_DIVINE_QUOTA_OFF = '1' // 测试隔离：关闭推演日限闸门（商业日限由生产部署配置开启）
 // 缺陷①：宫级自评 0.5 边界——>0.5 严格判定改为 ≥0.5（与 factor_prompt「0.5 判阳边界」对齐）
 // 缺陷②：零有效输入（provided===0）→ 风险厌恶口径，verdict 不得伪装为「可行」
 import { judgeYinYang, inputsCoverage } from '../lib/yijing/mapping.mjs'

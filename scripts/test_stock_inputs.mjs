@@ -1,4 +1,5 @@
 // test_stock_inputs.mjs — v0.6.1 股票 inputs / 基线 / 单事项 64 卦 专项测试
+process.env.DAOYI_DIVINE_QUOTA_OFF = '1' // 测试隔离：关闭推演日限闸门（商业日限由生产部署配置开启）
 // 覆盖：宫级简写取值、origin 语义、inputsCoverage(unmatched)、baselines 加载与阈值、
 //       factor-prompt 工具、GBK 解码、确定性推入口 evaluateDeterministic。
 // 全部离线（不访问网络）；行情路径用注入 fetcher。

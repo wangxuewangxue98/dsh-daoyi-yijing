@@ -9,6 +9,20 @@ import { quadText } from '../../lib/yijing/quad-hexagram.mjs'
 import { callCloudModel, resolveCloudSettings, isCloudSettingsViable, getCloudModelAdapter } from '../../lib/yijing/cloud-model.mjs'
 import { FINE_MAP } from '../../lib/yijing/subdomain-fine-map.mjs'
 import { runLlmScoring, buildEvidencePack, mergeLlmScores } from '../../lib/yijing/llm-scoring.mjs'
+// v0.9.4 Phase 1/2：商业授权地基（两轴 tier×registered）+ 推演日限闸门
+import {
+  TIERS,
+  TIER_CAPS,
+  TIER_LABELS,
+  getActivationState,
+  getEffectiveTier,
+  isRegistered,
+  getDailyDivineLimit,
+  maxQuadHexes,
+  hasCapability,
+  buildActivationGuide,
+} from '../../lib/yijing/license.mjs'
+import { checkDivineQuota, assertDivineQuota, DivineQuotaExceededError } from '../../lib/yijing/divine-quota.mjs'
 
 export const TOOL_PARAMS = {
   matter: {
@@ -153,14 +167,27 @@ function compactLlm(llm) {
 }
 
 // 四连卦紧凑摘要（v0.7.1）：四卦名+阳数+tone + 一致性 + 文本总述；非 stock-trend 型剧本为 null
-function compactQuad(quad) {
+// v0.9.4 P3：maxHexes 控制暴露层数——free 仅前 3 卦（隐藏爻位卦 hex_xi，即"第四维"），
+//   被截断的维度在返回里标注 locked_dims + 升级引导，不伪造数据。
+// 四卦固定顺序（与 quad-hexagram meta 一致）：di(域卦) → si(分域/子域位卦) → ci(业务族/子域卦) → xi(爻位卦)
+const QUAD_DIM_ORDER = ['di', 'si', 'ci', 'xi']
+function compactQuad(quad, maxHexes = 4) {
   if (!quad || !quad.hexes) return null
+  const n = Math.max(1, Math.min(4, Number(maxHexes) || 4))
+  const kept = QUAD_DIM_ORDER.slice(0, n)
+  const dropped = QUAD_DIM_ORDER.slice(n)
+  const lockedLabels = dropped
+    .map((dim) => (quad.hexes[`hex_${dim}`] && quad.hexes[`hex_${dim}`].label) || null)
+    .filter(Boolean)
   const hexes = Object.fromEntries(
-    Object.entries(quad.hexes).map(([k, h]) => [
-      k,
-      { label: h.label, name: h.name, yang: h.yang, tone: h.tone },
-    ]),
+    Object.entries(quad.hexes)
+      .filter(([k]) => {
+        const dim = k.startsWith('hex_') ? k.slice(4) : k
+        return kept.includes(dim)
+      })
+      .map(([k, h]) => [k, { label: h.label, name: h.name, yang: h.yang, tone: h.tone }]),
   )
+  if (lockedLabels.length) hexes.locked_dims = lockedLabels
   const c = quad.consistency
   // v0.9.1 P1：分歧深度解读进紧凑输出（此前只有一句「建议人工复核」）
   const d = c && c.divergence
@@ -193,11 +220,41 @@ function compactQuad(quad) {
       : `分歧 ${c.distinctNames} 种卦象${d ? `（${d.pattern_label}，严重度 ${d.severity}）` : '（建议人工复核）'}`,
     divergence,
     text: quadText(quad),
+    truncated: lockedLabels.length > 0,
+    upgrade_hint:
+      lockedLabels.length > 0
+        ? `已按当前档位隐藏 ${lockedLabels.join('、')}（第四维微域层）。升级完整版/Plus 解锁四维 6⁴=1296 与内嵌下钻。`
+        : null,
   }
 }
 
 // 纯函数主入口（零 DSH 依赖，可单测）
 export async function runYijingDivine(args = {}, config = {}) {
+  // ── v0.9.4 Phase 1/2：两轴授权 + 推演日限（门控层，不影响引擎确定性判定）──
+  const auth = args.__authState || getActivationState()
+  const authTier = getEffectiveTier(auth)
+  const authRegistered = isRegistered(auth)
+  const dailyLimit = getDailyDivineLimit(auth, config)
+  try {
+    assertDivineQuota(auth, config)
+  } catch (e) {
+    if (e instanceof DivineQuotaExceededError) {
+      return {
+        error: 'daily-limit-exceeded',
+        verdict: null,
+        auth: {
+          tier: authTier,
+          tier_label: TIER_LABELS[authTier] || '免费用户',
+          registered: authRegistered,
+          daily: { used: e.quota.used, limit: e.quota.limit, remaining: 0, day: e.quota.day },
+        },
+        guide: buildActivationGuide(auth, config),
+      }
+    }
+    throw e // 非配额错误不吞
+  }
+  const dailyQuota = checkDivineQuota(auth, config)
+
   const matter = args.matter || '(未提供决策事项)'
   let scriptArg = args.script
   if (typeof scriptArg === 'string') {
@@ -259,7 +316,8 @@ export async function runYijingDivine(args = {}, config = {}) {
             fine_map: isV2Script ? { on: useFineMap, granularity: hit.granularity, cells: hit.migratedSubdomains, rule_hits: hit.fineHits } : null,
           }
           // S3：LLM 子域级补分（llmLevel=L2/L3；行情信号优先，LLM 只补 NA 缺口；无端点/失败 → 诚实降级）
-          if ((args.llmLevel === 'L2' || args.llmLevel === 'L3') && isV2Script) {
+          // v0.9.4 P3：free 档无微域/子域级补分能力（属完整版+ 维度门控），降级标注并引导升级
+          if ((args.llmLevel === 'L2' || args.llmLevel === 'L3') && isV2Script && authTier !== TIERS.FREE) {
             // 费用承担方解析（v0.8.1）：默认用户 DSH 会话模型（cloudModelAutoSession 默认开）；
             //   kind=session → user-session（费用计入用户会话）；preset/custom → plugin-config（插件配置的自有 Key）；
             //   无可用端点 → none（跳过补分，行情信号不受影响）。
@@ -313,6 +371,15 @@ export async function runYijingDivine(args = {}, config = {}) {
               } catch (e) {
                 quoteMeta.llm_scoring = { level: args.llmLevel, degraded: true, error: String((e && e.message) || e), endpoint: llmEndpoint }
               }
+            }
+          } else if ((args.llmLevel === 'L2' || args.llmLevel === 'L3') && isV2Script) {
+            // free 档：微域/子域级补分属完整版+ 维度门控，锁定并引导升级
+            quoteMeta = quoteMeta || {}
+            quoteMeta.llm_scoring = {
+              level: args.llmLevel,
+              degraded: true,
+              reason: 'tier-locked',
+              note: '免费版不支持 L2/L3 子域级补分（微域层属完整版+）。升级完整版/Plus 解锁四维 6⁴ 与内嵌下钻。',
             }
           }
           if (args.hexEncoding !== 'absolute') {
@@ -479,8 +546,18 @@ export async function runYijingDivine(args = {}, config = {}) {
       // v0.9.1 N-2：基线版本可见（跨机器卦象不一致时可归因）
       baseline: result.quad_hexagram ? result.quad_hexagram.structure.baseline : null,
     },
-    quad_hexagram: compactQuad(result.quad_hexagram),
+    quad_hexagram: compactQuad(result.quad_hexagram, maxQuadHexes(authTier)),
     llm: compactLlm(result.llm),
+    // v0.9.4 Phase 1/2：授权态透明化（两轴 + 日限余量 + 能力），便于用户理解与升级决策
+    auth: {
+      tier: authTier,
+      tier_label: TIER_LABELS[authTier] || '免费用户',
+      registered: authRegistered,
+      daily: { used: dailyQuota.used, limit: dailyLimit, remaining: dailyQuota.remaining, day: dailyQuota.day },
+      caps: TIER_CAPS[authTier] || [],
+      microdomain_locked: !hasCapability(authTier, 'microdomain'),
+      drilldown_locked: !hasCapability(authTier, 'drilldown'),
+    },
   }
   if (quoteMeta) out.quote = quoteMeta
   if (notice) out.notice = notice

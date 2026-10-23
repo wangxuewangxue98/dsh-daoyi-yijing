@@ -12,3 +12,8 @@ Thumbs.db
 # 补丁脚本备份
 *.bak.*
 index.mjs.bak*
+
+# 授权密钥（scripts/gen_license_keys.mjs gen 生成；私钥绝不可入库！）
+daoyi-license-private.pem
+daoyi-license-public.pem
+.test-*.json

@@ -1,4 +1,5 @@
 // test_v092_features.mjs — v0.9.2 专项：P0 工具描述首句反向委托摘要 / P1 降级结构化 next_action
+process.env.DAOYI_DIVINE_QUOTA_OFF = '1' // 测试隔离：关闭推演日限闸门（商业日限由生产部署配置开启）
 import { runYijingDivine, TOOL_DESCRIPTION } from '../tools/yijing/divine.mjs'
 
 let pass = 0

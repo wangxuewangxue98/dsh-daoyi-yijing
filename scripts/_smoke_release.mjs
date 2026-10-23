@@ -1,4 +1,5 @@
 // _smoke_release.mjs — 发布前冒烟：report await 修复 / divine 兜底 / oneOf object 分支 / bundle.patch 形态
+process.env.DAOYI_DIVINE_QUOTA_OFF = '1' // 测试隔离：关闭推演日限闸门（商业日限由生产部署配置开启）
 import { runYijingReport } from '../tools/yijing/report.mjs'
 import { runYijingDivine } from '../tools/yijing/divine.mjs'
 import { readFileSync, existsSync } from 'node:fs'

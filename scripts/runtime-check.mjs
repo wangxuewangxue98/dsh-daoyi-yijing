@@ -1,4 +1,5 @@
 // runtime-check.mjs — DSH Runtime 联调预演（离线，纯 run* 函数，免 @deepseek-ai/dsh-tools）
+process.env.DAOYI_DIVINE_QUOTA_OFF = '1' // 测试隔离：关闭推演日限闸门（商业日限由生产部署配置开启）
 // 模拟 index.mjs apply 的关键路径：自校验 → 工具清单 → 模型清单/额度快照 → 真实推演 → 报告。
 import { runSelfCheck } from '../lib/yijing/selfcheck.mjs'
 import { runYijingDivine } from '../tools/yijing/divine.mjs'

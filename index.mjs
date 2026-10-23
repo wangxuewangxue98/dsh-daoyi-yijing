@@ -94,6 +94,26 @@ export const Config = Schema.object({
   freeDailyLimit: Schema.number().default(0)
     .description('（兼容别名，deprecated）设置后等同 freeLlmDailyLimit'),
 
+  // ---- 商业授权门控（v0.9.4 Phase 1/2：两轴 tier×registered）----
+  divineQuotaEnabled: Schema.boolean().default(true)
+    .description('推演调用日限闸门总开关（商业门控，独立于 LLM 速率闸）。false=运维/授权旁路，不计数不拦截。' +
+      '日限口径=每次 yijing_divine 计 1 次；free 无码 9 / free 注册 99 / full=plus 9999，自然日重置'),
+  freeDailyDivineLimit: Schema.number().default(9)
+    .description('免费·免注册 每日推演上限（次/日）'),
+  freeRegisteredDailyDivineLimit: Schema.number().default(99)
+    .description('免费·已注册（DR 口令激活）每日推演上限（次/日）'),
+  fullDailyDivineLimit: Schema.number().default(9999)
+    .description('完整版 每日推演上限（次/日）'),
+  plusDailyDivineLimit: Schema.number().default(9999)
+    .description('Plus 版 每日推演上限（次/日）'),
+  licensePublicKey: Schema.string().default('')
+    .description('Ed25519 离线激活码验签公钥（PEM/SPKI）。留空则离线码通道不可用（仅免费态 + 在线口令）。' +
+      '须由作者私钥配对生成（见 scripts/gen_license_keys.mjs），切勿入库'),
+  licensePubKeyPath: Schema.string().default('')
+    .description('Ed25519 公钥文件路径（与 licensePublicKey 二选一；留空=用内联/环境变量 DAOYI_LICENSE_PUBKEY）'),
+  licenseApiBase: Schema.string().default('')
+    .description('在线口令（DM-/DR-）验证后端基址；留空则在线通道不可用（仅免费态 + 离线码）。如 https://your-host'),
+
   // ---- 股票行情自动适配（v0.6.0）----
   stockQuoteEnabled: Schema.boolean().default(true)
     .description('stock-trend 剧本下自动拉腾讯实时行情构建 384 爻 inputs（divine 传/提取到股票代码时）；false=关闭自动行情'),
@@ -169,6 +189,22 @@ export async function apply(ctx, config) {
     `[道一-易经推演] v${PLUGIN_VERSION} 已加载，默认剧本=${config.defaultScript}，` +
       `强否决=${config.strongVetoEnabled}，工具=${tools.join(',')}`,
   )
+
+  // 4.1) 商业授权态（v0.9.4 Phase 1/2，两轴）：读本地 license.json，不阻断加载
+  try {
+    const { getActivationState, getEffectiveTier, isRegistered, getDailyDivineLimit } = await import('./lib/yijing/license.mjs')
+    const authState = getActivationState()
+    const tier = getEffectiveTier(authState)
+    safeLog(
+      `[道一-易经推演] 授权态 tier=${tier} registered=${isRegistered(authState)} ` +
+        `日限=${getDailyDivineLimit(authState, config)} 次/日` +
+        `；推演闸门=${config.divineQuotaEnabled === false ? '关闭' : '开启'}` +
+        `；离线码=${config.licensePublicKey || config.licensePubKeyPath || process.env.DAOYI_LICENSE_PUBKEY ? '已配公钥' : '未配(不可用)'}` +
+        `；在线口令=${config.licenseApiBase || process.env.DAOYI_LICENSE_API ? '已配后端' : '未配(不可用)'}`,
+    )
+  } catch (e) {
+    safeLog(`[道一-易经推演] 授权态读取失败（不影响加载）：${String((e && e.message) || e)}`)
+  }
 }
 
 export default { name, inject, Config, apply }

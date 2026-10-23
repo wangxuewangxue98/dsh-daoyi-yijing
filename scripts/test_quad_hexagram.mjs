@@ -1,4 +1,5 @@
 // test_quad_hexagram.mjs — 四连卦（quad-hexagram.mjs）专项测试（v0.7.0 阶段1）
+process.env.DAOYI_DIVINE_QUOTA_OFF = '1' // 测试隔离：关闭推演日限闸门（商业日限由生产部署配置开启）
 //
 // 覆盖：
 //   1. 业务族映射覆盖全部 384 检查点且六族均有样本（防 卦③ 坍缩）

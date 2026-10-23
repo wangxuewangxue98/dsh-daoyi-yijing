@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## 0.9.4 (unreleased) — 商业化三档授权 Phase 1/2
+### 新增：两轴授权地基 + 推演日限 + 维度门控（单版本插件内嵌功能分级）
+
+> 设计见 docs/商业化三档授权与管理端方案-暂定.md；本版仅落地**授权地基与门控**，后端发放/管理端/交易闭环见后续版本。
+
+### 一、Phase 1 授权地基（lib/yijing/license.mjs，新增）
+- 两轴模型：tier（free/full/plus）× registered（anonymous/registered），四态 = 免费用户（免注册）/ 免费用户（注册）/ 收费用户 / plus用户（对外叫法统一，内部枚举仍为 free/full/plus）。
+- 本地激活态 `storages/dsh-daoyi-yijing/license.json`：读白名单字段、过期自动回落免费·免注册。
+- 激活通道：**Ed25519 离线码验签**（作者私钥签名、插件公钥验签，公钥经 `licensePublicKey`/文件/env 注入，**不内嵌任何密钥**）+ **在线口令（DM-/DR-）后端验签**（可吊销，基址 `licenseApiBase`）。
+- 能力矩阵（TIER_CAPS）：free=[] / full=[microdomain] / plus=[microdomain,drilldown]；维度暴露层数（TIER_MAX_QUAD_HEXES）：free=3 / full=plus=4。
+- 升级引导 `buildActivationGuide`（P5）。
+
+### 二、Phase 2 两轴门控
+- **P4 推演日限**（lib/yijing/divine-quota.mjs，新增）：按「推演调用次数」计 1 次/次；两轴上限 free_anon=9 / free_reg=99 / full=plus=9999，自然日重置，fail-closed 本地硬闸；env `DAOYI_DIVINE_QUOTA_OFF` 可旁路（测试隔离）。
+- **P3 维度门控**（tools/yijing/divine.mjs）：free 仅暴露前 3 卦（隐藏第 4 卦 hex_xi=「第四维微域层」），锁 microdomain/下钻；free 禁用 L2/L3 子域级补分（属完整版+）；输出透明化 auth 字段（tier/registered/日限余量/caps/锁状态）。
+- **P6 配置**（index.mjs）：新增 divineQuotaEnabled / freeDailyDivineLimit(9) / freeRegisteredDailyDivineLimit(99) / fullDailyDivineLimit(9999) / plusDailyDivineLimit(9999) / licensePublicKey / licensePubKeyPath / licenseApiBase；apply 启动日志补授权态。
+
+### 三、验证
+- 新增 scripts/test_license.mjs(26) / scripts/test_divine_quota.mjs(11) / scripts/test_phase12.mjs(16)；既有 8 套件（verify / v093 / v092 / quad / stock_inputs / runtime / smoke 等）全 PASS，零回归。
+- scripts/gen_license_keys.mjs：生成 Ed25519 密钥对 + 离线码签名/验签工具（私钥由作者离线保管，不入库）。
+
+### 四、待办（后续版本）
+- 阶段 3 后端台账/口令 tier 参数 + DR 免费注册码发放；阶段 4 管理端 daoyi Tab；阶段 5 交易闭环；Plus 前置移植微域钻取模块（§10.10）。
+
+### 五、本次补充：三档用户管理对外叫法统一（单版本插件，功能分级）
+- 用户指令「只做一版的插件，功能分级：免费用户 / 收费用户 / plus用户」。
+- 新增 `TIER_LABELS` 映射（free→免费用户 / full→收费用户 / plus→plus用户），与内部枚举 `free/full/plus` 解耦；`buildActivationGuide` 与 `auth.tier_label` 输出统一使用该展示名。
+- `tools/yijing/divine.mjs` 推演返回 `auth` 增加 `tier_label` 字段（免费用户/收费用户/plus用户），档位透明化。
+- 规划文档 §2.1 / §2.2 / §2.3 三张档位表同步改为 免费用户 / 收费用户（full）/ plus用户（plus）。
+- 测试同步：test_license 含「功能分级」+ 三档标签断言（30/30）；test_phase12 校验 `auth.tier_label`（18/18）。
+
 ## 0.9.3 (2026-10-23)
 ### 两个高危边界缺陷修复（授权后实施）
 
