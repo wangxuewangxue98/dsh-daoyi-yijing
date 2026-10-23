@@ -517,6 +517,8 @@ export async function runYijingDivine(args = {}, config = {}) {
     overall_score: result.overall_score,
     has_veto: result.has_veto,
     verdict_insufficient_data: result.verdict_insufficient_data === true,
+    // v0.9.6 P1：板块趋势强度门控（弱反弹周假看涨治理；未触发 null）
+    verdict_regime_gate: result.verdict_regime_gate || null,
     veto_score_conflict: result.veto_score_conflict === true, // 否决骑墙（veto 但综合分≥0.5）→ 人工复核优先
     // v0.9.1 N-3：贴线摇摆（结论距决定线太近 → 跨种子/跨快照易翻面，不得当稳定判据）
     verdict_swing: result.verdict_swing || null,

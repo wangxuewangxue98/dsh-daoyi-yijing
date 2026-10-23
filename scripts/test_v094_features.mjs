@@ -188,5 +188,63 @@ import { klineStatsOf } from '../adapters/quote-history.mjs'
   ok(hy5only && hy5only.rule === 'HY01-sector-index-5d-only' && Math.abs(hy5only.delta + 0.06) < 1e-6, `HY01 仅 5 日口径（实际 ${hy5only && hy5only.delta}）`)
 }
 
+// ── ⑦ P1：板块趋势强度门控（v0.9.6；默认关闭+显式启用驱动，负面回测结论入档）──
+import { getBuiltinScript } from '../lib/yijing/checkpoints.mjs'
+{
+  // 默认关闭：三臂回测未支持原假设（见 CHANGELOG 0.9.6 与 stock-trend-v2 注释）
+  const v2default = buildStockTrendV2Script()
+  ok(v2default.verdictRegimeGate && v2default.verdictRegimeGate.enabled === false, 'stock-trend-v2 门控默认关闭（回测负面结论）')
+  const dbMdGate = buildCheckpointDatabase(getBuiltinScript('motor-design'))
+  ok(dbMdGate.verdictRegimeGate == null, 'motor-design 不声明门控 → db.verdictRegimeGate=null（零回归）')
+  // 显式启用克隆（机制本体测试）
+  const v2g = JSON.parse(JSON.stringify(v2default))
+  v2g.verdictRegimeGate = { enabled: true, jsMin: 0.5, hyMax: 0.5 }
+
+  // 门控触发：JS 域阳(0.9→全阳 score=1) + HY 域阴(0.2→全阴 score=0) + 其余 4 域中性(0.5→全阳)
+  //   → 综合分 5/6≈0.8333 ≥ 可行线 0.75，本应「可行」
+  const gateInputs = { JS: 0.9, HY: 0.2, JB: 0.5, ZJ: 0.5, XX: 0.5, FX: 0.5 }
+  const rGate = evaluateDeterministic(v2g, { inputs: gateInputs })
+  ok(rGate.overall_score === 0.8333 && rGate.verdict === '有条件可行', `JS阳+HY阴 → 可行降级为有条件可行（实际 ${rGate.verdict}，score=${rGate.overall_score}）`)
+  ok(rGate.verdict_regime_gate && rGate.verdict_regime_gate.rule === 'sector-weak-rebound', `verdict_regime_gate 记录 rule=sector-weak-rebound（实际 ${rGate.verdict_regime_gate && rGate.verdict_regime_gate.rule}）`)
+  ok(rGate.verdict_regime_gate.js_score === 1 && rGate.verdict_regime_gate.hy_score === 0, `门控记录域分明细（js=${rGate.verdict_regime_gate && rGate.verdict_regime_gate.js_score}, hy=${rGate.verdict_regime_gate && rGate.verdict_regime_gate.hy_score}）`)
+  ok(rGate.risk_level === '中', `降级后风险等级随之下调为「中」（实际 ${rGate.risk_level}）`)
+
+  // opt-in 语义：删除声明 → 同输入保持「可行」（逐位回归旧行为）
+  const cloneNoGate = JSON.parse(JSON.stringify(v2g))
+  delete cloneNoGate.verdictRegimeGate
+  const rNoGate = evaluateDeterministic(cloneNoGate, { inputs: gateInputs })
+  ok(rNoGate.verdict === '可行' && rNoGate.verdict_regime_gate == null, `不声明门控 → 维持可行（实际 ${rNoGate.verdict}，opt-in 语义）`)
+
+  // HY 域阳 → 不触发（板块趋势有支撑，孤立反弹升级为板块共振）
+  const rHyYang = evaluateDeterministic(v2g, { inputs: { JS: 0.9, HY: 0.6, JB: 0.5, ZJ: 0.5, XX: 0.5, FX: 0.5 } })
+  ok(rHyYang.verdict === '可行' && rHyYang.verdict_regime_gate == null, `HY 域阳 → 门控不触发（实际 ${rHyYang.verdict}）`)
+
+  // JS 域阴 → 综合分本就到不了「可行」线(0.75)，门控无关（有条件可行）
+  const rJsYin = evaluateDeterministic(v2g, { inputs: { JS: 0.4, HY: 0.2, JB: 0.5, ZJ: 0.5, XX: 0.5, FX: 0.5 } })
+  ok(rJsYin.verdict === '有条件可行' && rJsYin.verdict_regime_gate == null, `JS 域阴 → 有条件可行且门控不触发（实际 ${rJsYin.verdict}）`)
+
+  // 否决优先：XX 域强关联失守 → 不可行，门控不得改判（verdict 可行 前提不成立）
+  const rVeto = evaluateDeterministic(v2g, { inputs: { JS: 0.9, HY: 0.2, XX: 0.1, JB: 0.9, ZJ: 0.9, FX: 0.9 } })
+  ok(rVeto.verdict === '不可行' && rVeto.verdict_regime_gate == null, `否决路径优先于门控（实际 ${rVeto.verdict}，gate=${rVeto.verdict_regime_gate}）`)
+
+  // 参数可调：jsMin 提高到 1.01 → JS score=1.0 不再算「强」→ 不触发
+  const cloneStrict = JSON.parse(JSON.stringify(v2g))
+  cloneStrict.verdictRegimeGate = { enabled: true, jsMin: 1.01, hyMax: 0.5 }
+  const rStrict = evaluateDeterministic(cloneStrict, { inputs: gateInputs })
+  ok(rStrict.verdict === '可行' && rStrict.verdict_regime_gate == null, `jsMin=1.01 → JS1.0 不触发（实际 ${rStrict.verdict}，参数可调）`)
+
+  // 边界形态（v0.9.6 修复回归）：HY 域分恰 0.5（HY01 阴+HY04 阳，稀疏口径典型形态）必须触发
+  //   构造：HY 检查点半数 0.9(阳)/半数 0.2(阴) → HY score=0.5；JS 全阳 score=1；其余域中性全阳
+  const hyCpIds = buildCheckpointDatabase(v2g).checkpoints.filter((c) => !c.na && c.domain === 'HY').map((c) => c.id)
+  ok(hyCpIds.length >= 2, `HY 检查点充足（${hyCpIds.length} 个）`)
+  const half = Math.floor(hyCpIds.length / 2)
+  const hyMixed = {}
+  hyCpIds.forEach((id, i) => { hyMixed[id] = i < half ? 0.9 : 0.2 })
+  const rBoundary = evaluateDeterministic(v2g, { inputs: { JS: 0.9, JB: 0.5, ZJ: 0.5, XX: 0.5, FX: 0.5, ...hyMixed } })
+  ok(rBoundary.domain_results.HY.score === 0.5, `边界构造 HY score=0.5（实际 ${rBoundary.domain_results.HY.score}）`)
+  ok(rBoundary.verdict === '有条件可行' && rBoundary.verdict_regime_gate && rBoundary.verdict_regime_gate.rule === 'sector-weak-rebound',
+    `HY=0.5 边界形态触发门控（实际 ${rBoundary.verdict}，gate=${rBoundary.verdict_regime_gate && rBoundary.verdict_regime_gate.rule}）`)
+}
+
 console.log(`\n== v0.9.4 专项测试：${pass} PASS / ${fail} FAIL ==`)
 if (fail > 0) process.exit(1)
