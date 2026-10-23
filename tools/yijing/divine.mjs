@@ -379,7 +379,8 @@ export async function runYijingDivine(args = {}, config = {}) {
     const extra =
       (quoteMeta && quoteMeta.error
         ? `行情拉取失败（${quoteMeta.error}）`
-        : '未提供 symbols / inputs') + '，384 爻走缺值兜底，结果不具备个股区分度'
+        : '未提供 symbols / inputs') +
+      '，384 爻走缺值兜底使卦象恒为乾为天、综合分恒为 1；引擎已按风险厌恶口径强制 verdict=「不可行（数据不足）」，此结论不得当作真实研判'
     notice = notice ? notice + '\n' + extra : extra
   }
 
@@ -448,6 +449,7 @@ export async function runYijingDivine(args = {}, config = {}) {
     risk_level: result.risk_level,
     overall_score: result.overall_score,
     has_veto: result.has_veto,
+    verdict_insufficient_data: result.verdict_insufficient_data === true,
     veto_score_conflict: result.veto_score_conflict === true, // 否决骑墙（veto 但综合分≥0.5）→ 人工复核优先
     // v0.9.1 N-3：贴线摇摆（结论距决定线太近 → 跨种子/跨快照易翻面，不得当稳定判据）
     verdict_swing: result.verdict_swing || null,

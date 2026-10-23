@@ -58,7 +58,7 @@ function ok(cond, msg) {
     // 0.72 直接比 range[10,50] 必然阴；宫级语义下应判阳
     ok(judgeYinYang(engCp, 0.72, 'domain') === 1, '宫级 0.72 → 阳（绕开 range 阈值）')
     ok(judgeYinYang(engCp, 0.3, 'domain') === -1, '宫级 0.3 → 阴')
-    ok(judgeYinYang(engCp, 0.5, 'domain') === -1, '宫级恰好 0.5 → 阴（无证据不算有利）')
+    ok(judgeYinYang(engCp, 0.5, 'domain') === 1, '宫级恰好 0.5 → 阳（与 factor_prompt「0.5 判阳边界」一致）')
     ok(judgeYinYang(engCp, 0.50001, 'domain') === 1, '宫级略高于 0.5 → 阳')
     ok(judgeYinYang(engCp, null, 'domain') === -1, '宫级 null → 阴')
     ok(judgeYinYang(engCp, 'abc', 'domain') === -1, '宫级非数值 → 阴')

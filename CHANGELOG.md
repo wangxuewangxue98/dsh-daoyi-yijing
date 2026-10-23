@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 0.9.3 (2026-10-23)
+### 两个高危边界缺陷修复（授权后实施）
+
+### 一、缺陷①：宫级自评 0.5 边界 → 阳（与 factor_prompt 指引对齐）
+- `lib/yijing/mapping.mjs` `judgeYinYang` 的 `origin==='domain'`（对话/LLM 填分路径）原用严格 `value > 0.5`，使中性 `0.50` 判阴（坤为地·不可行），与 `factor_prompt`「0.5 会被判为阳爻边界」指引相反。
+- 改为 `value >= 0.5`：0.5=中性边界即判阳，与指引一致；0.49 及以下仍判阴（中性以下算不利）。
+- 「全 0.5 自评→全阳→可行」的假阳性顾虑，由 `factor_prompt`「无证据的宫给 0.45~0.55、避免恰好 0.5」+ 缺陷②的零输入强制覆盖共同化解，不引入新风险。
+
+### 二、缺陷②：零有效输入 → 风险厌恶口径（缺值兜底不得伪装为「可行」）
+- 根因：`mapping.mjs` 缺值兜底 `thresholdMid` 给"通过边界"→ 全部检查点判阳 → 综合分 1.0 / 卦象恒乾 / `verdict=可行`，零数据被伪装成全阳误报。
+- `lib/yijing/reviewer.mjs` 新增 `applyInsufficientDataOverride`：仅当 `inputs_coverage.provided===0`（无任何真实检查点/宫被覆盖）时触发，强制 `verdict='不可行（数据不足）'`、`overall_score=0`、`risk_level='高'`、打 `verdict_insufficient_data` 标记；部分输入（`coverage>0`）不受影响。应用于 `evaluate` 与 `evaluateDeterministic`（单一真相源，工具/verify/批量一致）。
+- 工具层 `tools/yijing/divine.mjs`：强化 `inputsSource==='none'` 的 notice（明示 verdict 已强制为不可行），紧凑输出暴露 `verdict_insufficient_data`；原有 `degraded` + `next_action` 继续引导回填。
+
+### 三、测试与状态
+- `scripts/test_v093_features.mjs` 新增 24 用例全绿（含缺陷①端点对照、缺陷②守卫单测 + 引擎/工具端到端）。
+- 回归：v0.9.2（11）/ v0.9.1（81）/ v0.9.0（79）/ test_stock_inputs（80）/ verify 全 PASS，无回归。
+- 注：0.9.2 段末尾的「待跟进」两条缺陷即本版所修。
+
 ## 0.9.2 (2026-10-23)
 ### P0 反向委托显式化 + P1 降级结构化 next_action
 
@@ -14,10 +32,9 @@
 - `runYijingDivine` 在任一降级（无输入 `source:'none'` / 覆盖率 `<50%` / `LLM 补分降级`）时产出 `next_action:{reason, remedy}`；`remedy` 含 `tool:'yijing_factor_prompt'`、`args:{matter,script}`、`then` 回填指引。detail 与紧凑两种返回均带。
 - 把"无质量输入时的静默误报"转成"明确的下一步动作"。
 
-### 三、待跟进（未在本版改，待授权）
-- 缺陷①：中性 `0.50` 被编码为阴（坤为地·不可行），与 `factor_prompt`「0.5 判阳边界」指引相反。
-- 缺陷②：不回填 → `verdict=可行/综合分1/全阳` 但 `coverage=0, degraded=true`，缺数据伪装成全阳。
-- 两处均涉及 verdict 语义与缺值默认值，属行为变更，需显式授权后再改。
+### 三、待跟进（已在 0.9.3 修复，见上）
+- 缺陷①：中性 `0.50` 被编码为阴（坤为地·不可行），与 `factor_prompt`「0.5 判阳边界」指引相反 → **0.9.3 已修**（`mapping.mjs` 改 `>=0.5`）。
+- 缺陷②：不回填 → `verdict=可行/综合分1/全阳` 但 `coverage=0, degraded=true`，缺数据伪装成全阳 → **0.9.3 已修**（`reviewer.mjs` 零输入风险厌恶覆盖）。
 
 ### 四、验证
 - `scripts/test_v092_features.mjs` 新增 11 用例（描述首句 + 三组降级/非降级 next_action）全绿；
